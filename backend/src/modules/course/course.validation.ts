@@ -1,0 +1,38 @@
+import { z } from "zod";
+
+export const createCourseSchema = z.object({
+  title: z.string().min(1, "শিরোনাম আবশ্যক"),
+  description: z.string().min(1, "বিবরণ আবশ্যক"),
+  category: z.enum(["academic", "job"]),
+  classLevel: z.enum(["6-8", "9-10", "11-12", "job"]),
+  subject: z.string().min(1),
+  type: z.enum(["full", "revision", "mcq", "chapter"]),
+  price: z.number().min(0).default(0),
+  regularPrice: z.number().min(0).optional(),
+  discountPercent: z.number().min(0).max(100).optional(),
+  enrollStartDate: z.string().optional(),
+  enrollEndDate: z.string().optional(),
+  courseDurationDays: z.number().min(1).default(180),
+  thumbnail: z.string().optional(),
+  outline: z.string().min(1, "আউটলাইন আবশ্যক"),
+  isLive: z.boolean().default(false),
+  liveMeetingLink: z.string().optional(),
+});
+
+export const createLectureSchema = z.object({
+  title: z.string().min(1, "শিরোনাম আবশ্যক"),
+  description: z.string().optional(),
+  videoUrl: z.string().optional(),
+  noteUrl: z.string().optional(),
+  isFree: z.boolean().optional(),
+});
+
+export const createLiveClassSchema = z.object({
+  title: z.string().min(1, "শিরোনাম আবশ্যক"),
+  dateTime: z.string().min(1, "তারিখ ও সময় আবশ্যক"),
+  meetLink: z.string().min(1, "মিট লিংক আবশ্যক"),
+});
+
+export const questionSchema = z.object({
+  question: z.string().min(1, "প্রশ্ন লিখুন"),
+});
