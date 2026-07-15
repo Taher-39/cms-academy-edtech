@@ -1,6 +1,22 @@
 import Link from "next/link";
+import CourseCard from "@/src/components/CourseCard";
 
-export default function Home() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+async function getFeaturedCourses() {
+  try {
+    const res = await fetch(`${API_URL}/api/courses?limit=6`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.courses || [];
+  } catch {
+    return [];
+  }
+}
+
+export default async function Home() {
+  const courses = await getFeaturedCourses();
+
   return (
     <div>
       {/* Hero Section */}
@@ -27,6 +43,42 @@ export default function Home() {
               এখনই রেজিস্ট্রেশন করুন
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Courses Section */}
+      <section className="max-w-7xl mx-auto px-4 py-20">
+        <div className="flex items-center justify-between mb-12">
+          <h2 className="text-3xl font-bold text-zinc-800 dark:text-zinc-100">
+            আমাদের কোর্সসমূহ
+          </h2>
+          <Link
+            href="/courses"
+            className="hidden sm:inline-block text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+          >
+            সব কোর্স দেখুন →
+          </Link>
+        </div>
+
+        {courses.length === 0 ? (
+          <div className="text-center py-12 text-zinc-500">
+            এই মুহূর্তে কোনো কোর্স পাওয়া যায়নি
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map((course: any) => (
+              <CourseCard key={course._id} course={course} />
+            ))}
+          </div>
+        )}
+
+        <div className="mt-10 text-center sm:hidden">
+          <Link
+            href="/courses"
+            className="inline-block px-6 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition"
+          >
+            সব কোর্স দেখুন →
+          </Link>
         </div>
       </section>
 

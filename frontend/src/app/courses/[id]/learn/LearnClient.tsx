@@ -74,9 +74,20 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
   }, [token, course._id]);
 
   const active = lectures[activeIndex];
-  const canWatch = (l: LectureData) => l.isFree || isEnrolled;
 
-  const handleMarkWatched = async () => {
+  // এনরোল্ড শিক্ষার্থীর জন্য ধারাবাহিক আনলক: প্রথম লেকচার সবসময় খোলা, পরেরটি
+  // খুলবে আগেরটি দেখা বা স্কিপ করা হলেই। এনরোল না করা দর্শকের ফ্রি প্রিভিউ
+  // লেকচারগুলোতে এই ধারাবাহিকতার নিয়ম প্রযোজ্য নয় (তারা progress ট্র্যাক করতে পারে না)।
+  const hasBaseAccess = (l: LectureData) => l.isFree || isEnrolled;
+  const canWatch = (l: LectureData, idx: number) => {
+    if (!hasBaseAccess(l)) return false;
+    if (!isEnrolled) return true;
+    if (idx === 0) return true;
+    const prev = lectures[idx - 1];
+    return watched.has(prev._id);
+  };
+
+  const markProgress = async (successMsg: string) => {
     if (!active || !isEnrolled) return;
     setMarking(true);
     try {
@@ -84,7 +95,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
         lectureId: active._id,
       });
       setWatched((prev) => new Set(prev).add(active._id));
-      addToast("লেকচারটি সম্পন্ন হিসেবে চিহ্নিত হয়েছে", "success");
+      addToast(successMsg, "success");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
@@ -94,6 +105,9 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
       setMarking(false);
     }
   };
+
+  const handleMarkWatched = () => markProgress("লেকচারটি সম্পন্ন হিসেবে চিহ্নিত হয়েছে");
+  const handleSkip = () => markProgress("লেকচারটি স্কিপ করা হয়েছে");
 
   if (!checked) {
     return (
@@ -147,7 +161,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
             </div>
             <div className="max-h-[70vh] overflow-y-auto">
               {lectures.map((l, idx) => {
-                const unlocked = canWatch(l);
+                const unlocked = canWatch(l, idx);
                 const isActive = idx === activeIndex;
                 return (
                   <button
@@ -225,7 +239,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
                     <p className="text-sm text-zinc-500">{active.description}</p>
                   )}
 
-                  {canWatch(active) ? (
+                  {canWatch(active, activeIndex) ? (
                     <>
                       {active.videoUrl ? (
                         <YouTubeEmbed url={active.videoUrl} title={active.title} />
@@ -247,20 +261,43 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
                           </a>
                         )}
                         {isEnrolled && (
-                          <button
-                            onClick={handleMarkWatched}
-                            disabled={marking || watched.has(active._id)}
-                            className="text-sm px-4 py-2 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-400 text-white rounded-lg transition"
-                          >
-                            {watched.has(active._id)
-                              ? "✅ সম্পন্ন হয়েছে"
-                              : marking
-                              ? "..."
-                              : "সম্পন্ন হিসেবে চিহ্নিত করুন"}
-                          </button>
+                          <>
+                            <button
+                              onClick={handleMarkWatched}
+                              disabled={marking || watched.has(active._id)}
+                              className="text-sm px-4 py-2 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-400 text-white rounded-lg transition"
+                            >
+                              {watched.has(active._id)
+                                ? "✅ সম্পন্ন হয়েছে"
+                                : marking
+                                ? "..."
+                                : "সম্পন্ন হিসেবে চিহ্নিত করুন"}
+                            </button>
+                            {!watched.has(active._id) && (
+                              <button
+                                onClick={handleSkip}
+                                disabled={marking}
+                                className="text-sm px-4 py-2 border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
+                              >
+                                এড়িয়ে যান (Skip)
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </>
+                  ) : hasBaseAccess(active) ? (
+                    <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                      <p className="text-zinc-500 mb-4">
+                        🔒 এই লেকচারটি খুলতে আগের লেকচারটি দেখুন অথবা স্কিপ করুন
+                      </p>
+                      <button
+                        onClick={() => setActiveIndex(activeIndex - 1)}
+                        className="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg font-medium transition inline-block"
+                      >
+                        আগের লেকচারে যান
+                      </button>
+                    </div>
                   ) : (
                     <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700">
                       <p className="text-zinc-500 mb-4">

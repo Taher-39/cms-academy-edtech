@@ -32,6 +32,21 @@ export async function listCourses(req: Request, res: Response) {
   }
 }
 
+export async function uploadThumbnail(req: Request, res: Response) {
+  try {
+    const file = (req as Request & { file?: { buffer: Buffer } }).file;
+    if (!file) {
+      return res.status(400).json({ message: "ছবি ফাইল প্রদান করুন" });
+    }
+    const result = await courseService.uploadCourseThumbnail(file.buffer);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error("Upload thumbnail error:", error);
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    return res.status(500).json({ message: "সার্ভার ত্রুটি" });
+  }
+}
+
 export async function getCourseById(req: Request, res: Response) {
   try {
     const result = await courseService.getCourseById(req.params.courseId);

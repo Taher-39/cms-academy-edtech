@@ -4,6 +4,7 @@ import { LectureModel } from "../../shared/models/Lecture";
 import { LiveClassModel } from "../../shared/models/LiveClass";
 import { QnAModel } from "../../shared/models/QnA";
 import { EnrollmentModel } from "../../shared/models/Enrollment";
+import cloudinary from "../../shared/config/cloudinary";
 
 // ============ Courses ============
 
@@ -105,8 +106,29 @@ export async function createCourse(data: any, teacherId: string) {
     }
   }
 
+  // Free courses are recorded-only — never allow a meet link to be attached.
+  if (!courseData.price || Number(courseData.price) === 0) {
+    courseData.isLive = false;
+    courseData.liveMeetingLink = "";
+  }
+
   const course = await CourseModel.create(courseData);
   return { message: "কোর্স তৈরি সফল", course };
+}
+
+export async function uploadCourseThumbnail(fileBuffer: Buffer) {
+  const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "cms-academy/course-thumbnails", resource_type: "image" },
+      (error: unknown, result: { secure_url: string } | undefined) => {
+        if (error || !result) return reject(error || new Error("Upload failed"));
+        resolve(result);
+      }
+    );
+    stream.end(fileBuffer);
+  });
+
+  return { message: "থাম্বনেইল আপলোড সফল", url: uploadResult.secure_url };
 }
 
 export async function updateCourse(courseId: string, body: any, userId: string, role: string) {
@@ -124,6 +146,13 @@ export async function updateCourse(courseId: string, body: any, userId: string, 
   if (role !== "admin" && role !== "superAdmin") {
     delete body.status;
     delete body.isFeatured;
+  }
+
+  // Free courses are recorded-only — never allow a meet link to be attached.
+  const effectivePrice = body.price !== undefined ? Number(body.price) : course.price;
+  if (!effectivePrice || effectivePrice === 0) {
+    body.isLive = false;
+    body.liveMeetingLink = "";
   }
 
   const updated = await CourseModel.findByIdAndUpdate(courseId, body, {

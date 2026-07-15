@@ -94,7 +94,13 @@ export default function DashboardLayout({
             ))}
         </nav>
 
-        <div className="p-3 border-t border-zinc-700">
+        <div className="p-3 border-t border-zinc-700 space-y-1">
+          <Link
+            href="/"
+            className="block px-3 py-2 rounded-lg text-sm text-zinc-300 hover:bg-zinc-900 hover:text-white transition"
+          >
+            ⬅ হোমে ফিরুন
+          </Link>
           <button
             onClick={() => {
               logout();

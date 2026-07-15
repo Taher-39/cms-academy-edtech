@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/src/lib/api";
@@ -17,6 +17,7 @@ interface Course {
   type: string;
   price: number;
   isLive: boolean;
+  thumbnail?: string;
   lectures: string[];
   enrolledStudents: string[];
   createdAt: string;
@@ -46,12 +47,15 @@ export default function ManageCoursesPage() {
     courseDurationDays: 180,
     isLive: false,
     liveMeetingLink: "",
+    thumbnail: "",
     enrollStartDate: "",
     enrollEndDate: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!token) {
@@ -82,16 +86,26 @@ export default function ManageCoursesPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        type === "checkbox"
-          ? (e.target as HTMLInputElement).checked
-          : name === "price" || name === "regularPrice" || name === "courseDurationDays"
-          ? Number(value)
-          : value,
-    }));
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        [name]:
+          type === "checkbox"
+            ? (e.target as HTMLInputElement).checked
+            : name === "price" || name === "regularPrice" || name === "courseDurationDays"
+            ? Number(value)
+            : value,
+      };
+      // ফ্রি কোর্স শুধু রেকর্ডেড হবে — লাইভ/মিট লিংকের অপশন থাকবে না
+      if (name === "price" && Number(value) === 0) {
+        next.isLive = false;
+        next.liveMeetingLink = "";
+      }
+      return next;
+    });
   };
+
+  const isFreeCourse = formData.price === 0;
 
   const resetForm = () => {
     setFormData({
@@ -107,6 +121,7 @@ export default function ManageCoursesPage() {
       courseDurationDays: 180,
       isLive: false,
       liveMeetingLink: "",
+      thumbnail: "",
       enrollStartDate: "",
       enrollEndDate: "",
     });
@@ -130,12 +145,34 @@ export default function ManageCoursesPage() {
       courseDurationDays: 180,
       isLive: course.isLive,
       liveMeetingLink: "",
+      thumbnail: course.thumbnail || "",
       enrollStartDate: "",
       enrollEndDate: "",
     });
     setEditingId(course._id);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setThumbnailUploading(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("thumbnail", file);
+      const res = await api.post("/api/courses/thumbnail", uploadData);
+      setFormData((prev) => ({ ...prev, thumbnail: res.data.url }));
+      addToast("থাম্বনেইল আপলোড হয়েছে", "success");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "থাম্বনেইল আপলোড ব্যর্থ";
+      addToast(msg, "error");
+    } finally {
+      setThumbnailUploading(false);
+      if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -395,38 +432,78 @@ export default function ManageCoursesPage() {
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="isLive"
-                checked={formData.isLive}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    isLive: e.target.checked,
-                  }))
-                }
-                className="rounded"
-              />
-              <label className="text-sm text-zinc-700 dark:text-zinc-300">
-                লাইভ কোর্স
+            <div>
+              <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                কোর্স থাম্বনেইল (ছবি)
               </label>
+              <div className="flex items-center gap-4">
+                <div className="w-28 h-16 rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center flex-shrink-0">
+                  {formData.thumbnail ? (
+                    <img
+                      src={formData.thumbnail}
+                      alt="থাম্বনেইল"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-zinc-400">প্রিভিউ নেই</span>
+                  )}
+                </div>
+                <div>
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleThumbnailChange}
+                    disabled={thumbnailUploading}
+                    className="text-sm text-zinc-600 dark:text-zinc-400"
+                  />
+                  {thumbnailUploading && (
+                    <p className="text-xs text-zinc-500 mt-1">আপলোড হচ্ছে...</p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {formData.isLive && (
-              <div>
-                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
-                  লাইভ মিট লিংক
-                </label>
-                <input
-                  type="url"
-                  name="liveMeetingLink"
-                  value={formData.liveMeetingLink}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
-                  placeholder="https://meet.google.com/..."
-                />
-              </div>
+            {isFreeCourse ? (
+              <p className="text-xs text-zinc-500 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2">
+                ফ্রি কোর্স শুধুমাত্র রেকর্ডেড হবে — লাইভ ক্লাস/মিট লিংক যোগ করার সুবিধা এখানে নেই।
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="isLive"
+                    checked={formData.isLive}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isLive: e.target.checked,
+                      }))
+                    }
+                    className="rounded"
+                  />
+                  <label className="text-sm text-zinc-700 dark:text-zinc-300">
+                    লাইভ কোর্স
+                  </label>
+                </div>
+
+                {formData.isLive && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                      লাইভ মিট লিংক
+                    </label>
+                    <input
+                      type="url"
+                      name="liveMeetingLink"
+                      value={formData.liveMeetingLink}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                      placeholder="https://meet.google.com/..."
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             <div className="flex gap-3">

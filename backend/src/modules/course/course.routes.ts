@@ -1,11 +1,29 @@
 import { Router } from "express";
+import multer from "multer";
 import { authMiddleware, optionalAuth, requireRole } from "../../shared/middleware/auth.middleware";
 import * as courseController from "./course.controller";
 
 const router = Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("শুধুমাত্র ছবি ফাইল আপলোড করা যাবে"));
+    }
+    cb(null, true);
+  },
+});
 
 // Courses
 router.get("/", optionalAuth, courseController.listCourses);
+router.post(
+  "/thumbnail",
+  authMiddleware,
+  requireRole("admin", "superAdmin", "teacher"),
+  upload.single("thumbnail"),
+  courseController.uploadThumbnail
+);
 router.get("/:courseId", courseController.getCourseById);
 router.post("/", authMiddleware, requireRole("admin", "superAdmin", "teacher"), courseController.createCourse);
 router.put("/:courseId", authMiddleware, courseController.updateCourse);
