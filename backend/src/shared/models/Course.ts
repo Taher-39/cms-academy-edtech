@@ -33,6 +33,30 @@ const CourseSchema = new Schema(
     teacher: { type: Schema.Types.ObjectId, ref: "User", required: true },
     isLive: { type: Boolean, required: true, default: false },
     liveMeetingLink: { type: String, required: false },
+    trailerVideoUrl: { type: String, required: false },
+    whatYouWillLearn: [{ type: String }],
+    features: [{ type: String }],
+    classSchedule: [
+      {
+        day: { type: String, required: true },
+        time: { type: String, required: true },
+        subject: { type: String, required: false },
+      },
+    ],
+    faqs: [
+      {
+        question: { type: String, required: true },
+        answer: { type: String, required: true },
+      },
+    ],
+    testimonials: [
+      {
+        name: { type: String, required: true },
+        institution: { type: String, required: false },
+        rating: { type: Number, required: false, min: 1, max: 5, default: 5 },
+        comment: { type: String, required: true },
+      },
+    ],
     lectures: [{ type: Schema.Types.ObjectId, ref: "Lecture" }],
     enrolledStudents: [{ type: Schema.Types.ObjectId, ref: "User" }],
     status: { type: String, enum: courseStatuses, required: true, default: "approved" },
@@ -47,6 +71,8 @@ CourseSchema.pre("save", function () {
     doc.discountPercent = Math.round(
       ((doc.regularPrice - doc.price) / doc.regularPrice) * 100
     );
+  } else {
+    doc.discountPercent = 0;
   }
 });
 

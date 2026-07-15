@@ -9,12 +9,15 @@ import { useToast } from "@/src/components/Toast";
 
 type LiveClassItem = {
   _id: string;
+  courseId?: string;
   courseTitle?: string;
   title: string;
   dateTime: string;
   meetLink: string;
   recordedLecture?: string | null;
 };
+
+type LectureOption = { _id: string; title: string };
 
 export default function LiveClassManagePage() {
   const router = useRouter();
@@ -23,6 +26,9 @@ export default function LiveClassManagePage() {
 
   const [courses, setCourses] = useState<any[]>([]);
   const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
+  const [lecturesByCourse, setLecturesByCourse] = useState<Record<string, LectureOption[]>>({});
+  const [recordingSelections, setRecordingSelections] = useState<Record<string, string>>({});
+  const [attachingId, setAttachingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // create
@@ -64,14 +70,23 @@ export default function LiveClassManagePage() {
       setCourses(coursesRes.data.courses || []);
 
       const allLive: LiveClassItem[] = [];
+      const lecturesMap: Record<string, LectureOption[]> = {};
       for (const course of coursesRes.data.courses || []) {
         try {
-          const liveRes = await api.get(`/api/courses/${course._id}/live`);
+          const [liveRes, lectRes] = await Promise.all([
+            api.get(`/api/courses/${course._id}/live`),
+            api.get(`/api/courses/${course._id}/lectures`),
+          ]);
           const items = (liveRes.data.liveClasses || []).map((lc: any) => ({
             ...lc,
+            courseId: course._id,
             courseTitle: course.title,
           }));
           allLive.push(...items);
+          lecturesMap[course._id] = (lectRes.data.lectures || []).map((l: any) => ({
+            _id: l._id,
+            title: l.title,
+          }));
         } catch {
           // skip
         }
@@ -79,10 +94,32 @@ export default function LiveClassManagePage() {
 
       allLive.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
       setLiveClasses(allLive);
+      setLecturesByCourse(lecturesMap);
     } catch {
       addToast("তথ্য লোড করা যায়নি", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAttachRecording = async (liveId: string) => {
+    const lectureId = recordingSelections[liveId];
+    if (!lectureId) {
+      addToast("একটি লেকচার নির্বাচন করুন", "error");
+      return;
+    }
+    setAttachingId(liveId);
+    try {
+      await api.put(`/api/live/${liveId}/record`, { recordedLecture: lectureId });
+      addToast("রেকর্ডেড লেকচার সংযুক্ত করা হয়েছে!", "success");
+      fetchData();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "সংযুক্ত করা ব্যর্থ";
+      addToast(msg, "error");
+    } finally {
+      setAttachingId(null);
     }
   };
 
@@ -418,6 +455,34 @@ export default function LiveClassManagePage() {
 
                     {lc.recordedLecture && (
                       <p className="text-xs text-green-600 mt-1">✅ রেকর্ডিং সংযুক্ত হয়েছে</p>
+                    )}
+
+                    {isPast && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <select
+                          value={recordingSelections[lc._id] || ""}
+                          onChange={(e) =>
+                            setRecordingSelections((prev) => ({ ...prev, [lc._id]: e.target.value }))
+                          }
+                          className="px-3 py-1.5 text-xs rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                        >
+                          <option value="">
+                            {lc.recordedLecture ? "রেকর্ডিং পরিবর্তন করুন" : "লেকচার নির্বাচন করুন"}
+                          </option>
+                          {(lc.courseId ? lecturesByCourse[lc.courseId] : [])?.map((l) => (
+                            <option key={l._id} value={l._id}>
+                              {l.title}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleAttachRecording(lc._id)}
+                          disabled={attachingId === lc._id}
+                          className="px-3 py-1.5 text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/60 disabled:opacity-50 transition"
+                        >
+                          {attachingId === lc._id ? "সংযুক্ত হচ্ছে..." : "রেকর্ডিং সংযুক্ত করুন"}
+                        </button>
+                      </div>
                     )}
                   </div>
 

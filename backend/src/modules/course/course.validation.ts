@@ -17,6 +17,36 @@ export const createCourseSchema = z.object({
   outline: z.string().min(1, "আউটলাইন আবশ্যক"),
   isLive: z.boolean().default(false),
   liveMeetingLink: z.string().optional(),
+  trailerVideoUrl: z.string().optional(),
+  whatYouWillLearn: z.array(z.string()).optional(),
+  features: z.array(z.string()).optional(),
+  classSchedule: z
+    .array(
+      z.object({
+        day: z.string().min(1),
+        time: z.string().min(1),
+        subject: z.string().optional(),
+      })
+    )
+    .optional(),
+  faqs: z
+    .array(
+      z.object({
+        question: z.string().min(1),
+        answer: z.string().min(1),
+      })
+    )
+    .optional(),
+  testimonials: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        institution: z.string().optional(),
+        rating: z.number().min(1).max(5).optional(),
+        comment: z.string().min(1),
+      })
+    )
+    .optional(),
 });
 
 export const createLectureSchema = z.object({

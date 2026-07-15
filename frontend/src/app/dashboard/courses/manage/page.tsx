@@ -8,22 +8,111 @@ import { useAuthStore } from "@/src/lib/store";
 import { useToast } from "@/src/components/Toast";
 import DeleteConfirmDialog from "@/src/components/DeleteConfirmDialog";
 
+interface ScheduleRow {
+  day: string;
+  time: string;
+  subject: string;
+}
+
+interface FaqRow {
+  question: string;
+  answer: string;
+}
+
+interface TestimonialRow {
+  name: string;
+  institution: string;
+  rating: number;
+  comment: string;
+}
+
 interface Course {
   _id: string;
   title: string;
+  description?: string;
   category: string;
   classLevel: string;
   subject: string;
   type: string;
   price: number;
+  regularPrice?: number;
+  outline?: string;
+  courseDurationDays?: number;
   isLive: boolean;
+  liveMeetingLink?: string;
   thumbnail?: string;
+  enrollStartDate?: string;
+  enrollEndDate?: string;
+  trailerVideoUrl?: string;
+  whatYouWillLearn?: string[];
+  features?: string[];
+  classSchedule?: { day: string; time: string; subject?: string }[];
+  faqs?: { question: string; answer: string }[];
+  testimonials?: { name: string; institution?: string; rating?: number; comment: string }[];
   lectures: string[];
   enrolledStudents: string[];
   createdAt: string;
   status: string;
   isFeatured: boolean;
 }
+
+interface CourseFormData {
+  title: string;
+  description: string;
+  category: string;
+  classLevel: string;
+  subject: string;
+  type: string;
+  price: number;
+  regularPrice: number;
+  outline: string;
+  courseDurationDays: number;
+  isLive: boolean;
+  liveMeetingLink: string;
+  thumbnail: string;
+  enrollStartDate: string;
+  enrollEndDate: string;
+  trailerVideoUrl: string;
+  whatYouWillLearnText: string;
+  featuresText: string;
+  classSchedule: ScheduleRow[];
+  faqs: FaqRow[];
+  testimonials: TestimonialRow[];
+}
+
+const dayOptions = [
+  { value: "sunday", label: "রবিবার" },
+  { value: "monday", label: "সোমবার" },
+  { value: "tuesday", label: "মঙ্গলবার" },
+  { value: "wednesday", label: "বুধবার" },
+  { value: "thursday", label: "বৃহস্পতিবার" },
+  { value: "friday", label: "শুক্রবার" },
+  { value: "saturday", label: "শনিবার" },
+];
+
+const initialFormData: CourseFormData = {
+  title: "",
+  description: "",
+  category: "academic",
+  classLevel: "9-10",
+  subject: "",
+  type: "full",
+  price: 0,
+  regularPrice: 0,
+  outline: "",
+  courseDurationDays: 180,
+  isLive: false,
+  liveMeetingLink: "",
+  thumbnail: "",
+  enrollStartDate: "",
+  enrollEndDate: "",
+  trailerVideoUrl: "",
+  whatYouWillLearnText: "",
+  featuresText: "",
+  classSchedule: [],
+  faqs: [],
+  testimonials: [],
+};
 
 export default function ManageCoursesPage() {
   const router = useRouter();
@@ -34,23 +123,7 @@ export default function ManageCoursesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "academic",
-    classLevel: "9-10",
-    subject: "",
-    type: "full",
-    price: 0,
-    regularPrice: 0,
-    outline: "",
-    courseDurationDays: 180,
-    isLive: false,
-    liveMeetingLink: "",
-    thumbnail: "",
-    enrollStartDate: "",
-    enrollEndDate: "",
-  });
+  const [formData, setFormData] = useState<CourseFormData>(initialFormData);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -107,24 +180,56 @@ export default function ManageCoursesPage() {
 
   const isFreeCourse = formData.price === 0;
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      category: "academic",
-      classLevel: "9-10",
-      subject: "",
-      type: "full",
-      price: 0,
-      regularPrice: 0,
-      outline: "",
-      courseDurationDays: 180,
-      isLive: false,
-      liveMeetingLink: "",
-      thumbnail: "",
-      enrollStartDate: "",
-      enrollEndDate: "",
+  // ---- Dynamic list helpers: class schedule ----
+  const addScheduleRow = () =>
+    setFormData((prev) => ({
+      ...prev,
+      classSchedule: [...prev.classSchedule, { day: "sunday", time: "", subject: "" }],
+    }));
+  const updateScheduleRow = (index: number, patch: Partial<ScheduleRow>) =>
+    setFormData((prev) => {
+      const rows = [...prev.classSchedule];
+      rows[index] = { ...rows[index], ...patch };
+      return { ...prev, classSchedule: rows };
     });
+  const removeScheduleRow = (index: number) =>
+    setFormData((prev) => ({
+      ...prev,
+      classSchedule: prev.classSchedule.filter((_, i) => i !== index),
+    }));
+
+  // ---- Dynamic list helpers: FAQ ----
+  const addFaqRow = () =>
+    setFormData((prev) => ({ ...prev, faqs: [...prev.faqs, { question: "", answer: "" }] }));
+  const updateFaqRow = (index: number, patch: Partial<FaqRow>) =>
+    setFormData((prev) => {
+      const rows = [...prev.faqs];
+      rows[index] = { ...rows[index], ...patch };
+      return { ...prev, faqs: rows };
+    });
+  const removeFaqRow = (index: number) =>
+    setFormData((prev) => ({ ...prev, faqs: prev.faqs.filter((_, i) => i !== index) }));
+
+  // ---- Dynamic list helpers: Testimonials ----
+  const addTestimonialRow = () =>
+    setFormData((prev) => ({
+      ...prev,
+      testimonials: [...prev.testimonials, { name: "", institution: "", rating: 5, comment: "" }],
+    }));
+  const updateTestimonialRow = (index: number, patch: Partial<TestimonialRow>) =>
+    setFormData((prev) => {
+      const rows = [...prev.testimonials];
+      rows[index] = { ...rows[index], ...patch };
+      return { ...prev, testimonials: rows };
+    });
+  const removeTestimonialRow = (index: number) =>
+    setFormData((prev) => ({
+      ...prev,
+      testimonials: prev.testimonials.filter((_, i) => i !== index),
+    }));
+
+  const resetForm = () => {
+    setFormData(initialFormData);
     setEditingId(null);
     setShowForm(false);
     setError("");
@@ -134,20 +239,35 @@ export default function ManageCoursesPage() {
   const handleEdit = (course: Course) => {
     setFormData({
       title: course.title,
-      description: "",
+      description: course.description || "",
       category: course.category,
       classLevel: course.classLevel,
       subject: course.subject,
       type: course.type,
       price: course.price,
-      regularPrice: 0,
-      outline: "",
-      courseDurationDays: 180,
+      regularPrice: course.regularPrice || 0,
+      outline: course.outline || "",
+      courseDurationDays: course.courseDurationDays || 180,
       isLive: course.isLive,
-      liveMeetingLink: "",
+      liveMeetingLink: course.liveMeetingLink || "",
       thumbnail: course.thumbnail || "",
-      enrollStartDate: "",
-      enrollEndDate: "",
+      enrollStartDate: course.enrollStartDate ? course.enrollStartDate.slice(0, 10) : "",
+      enrollEndDate: course.enrollEndDate ? course.enrollEndDate.slice(0, 10) : "",
+      trailerVideoUrl: course.trailerVideoUrl || "",
+      whatYouWillLearnText: (course.whatYouWillLearn || []).join("\n"),
+      featuresText: (course.features || []).join("\n"),
+      classSchedule: (course.classSchedule || []).map((r) => ({
+        day: r.day,
+        time: r.time,
+        subject: r.subject || "",
+      })),
+      faqs: course.faqs || [],
+      testimonials: (course.testimonials || []).map((t) => ({
+        name: t.name,
+        institution: t.institution || "",
+        rating: t.rating || 5,
+        comment: t.comment,
+      })),
     });
     setEditingId(course._id);
     setShowForm(true);
@@ -181,12 +301,42 @@ export default function ManageCoursesPage() {
     setSuccess("");
     setSaving(true);
 
+    const payload = {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      classLevel: formData.classLevel,
+      subject: formData.subject,
+      type: formData.type,
+      price: formData.price,
+      regularPrice: formData.regularPrice || undefined,
+      outline: formData.outline,
+      courseDurationDays: formData.courseDurationDays,
+      isLive: formData.isLive,
+      liveMeetingLink: formData.liveMeetingLink,
+      thumbnail: formData.thumbnail,
+      enrollStartDate: formData.enrollStartDate || undefined,
+      enrollEndDate: formData.enrollEndDate || undefined,
+      trailerVideoUrl: formData.trailerVideoUrl || undefined,
+      whatYouWillLearn: formData.whatYouWillLearnText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      features: formData.featuresText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      classSchedule: formData.classSchedule.filter((r) => r.day && r.time.trim()),
+      faqs: formData.faqs.filter((f) => f.question.trim() && f.answer.trim()),
+      testimonials: formData.testimonials.filter((t) => t.name.trim() && t.comment.trim()),
+    };
+
     try {
       if (editingId) {
-        await api.put(`/api/courses/${editingId}`, formData);
+        await api.put(`/api/courses/${editingId}`, payload);
         addToast("কোর্স আপডেট করা হয়েছে!", "success");
       } else {
-        await api.post("/api/courses", formData);
+        await api.post("/api/courses", payload);
         addToast("কোর্স তৈরি করা হয়েছে!", "success");
       }
       resetForm();
@@ -401,6 +551,30 @@ export default function ManageCoursesPage() {
                   className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  এনরোলমেন্ট শুরু (ঐচ্ছিক)
+                </label>
+                <input
+                  type="date"
+                  name="enrollStartDate"
+                  value={formData.enrollStartDate}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  এনরোলমেন্ট শেষ (ঐচ্ছিক)
+                </label>
+                <input
+                  type="date"
+                  name="enrollEndDate"
+                  value={formData.enrollEndDate}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                />
+              </div>
             </div>
 
             <div>
@@ -429,6 +603,49 @@ export default function ManageCoursesPage() {
                 rows={6}
                 className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
                 placeholder="প্রতি লাইনে একটি চ্যাপ্টার লিখুন&#10;যেমন:&#10;অধ্যায় ১: বীজগণিত&#10;অধ্যায় ২: জ্যামিতি"
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  কী কী শিখবেন (প্রতি লাইনে একটি)
+                </label>
+                <textarea
+                  name="whatYouWillLearnText"
+                  value={formData.whatYouWillLearnText}
+                  onChange={handleInputChange}
+                  rows={5}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                  placeholder="যেমন:&#10;সৃজনশীল প্রশ্ন সমাধান&#10;MCQ কৌশল"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  এই কোর্সে যা যা থাকছে (প্রতি লাইনে একটি)
+                </label>
+                <textarea
+                  name="featuresText"
+                  value={formData.featuresText}
+                  onChange={handleInputChange}
+                  rows={5}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                  placeholder="যেমন:&#10;সাপ্তাহিক লাইভ ক্লাস&#10;চ্যাপ্টার ভিত্তিক লেকচার শীট&#10;সাপ্তাহিক প্রশ্নোত্তর সেশন"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                ট্রেইলার ভিডিও (YouTube লিংক, ঐচ্ছিক)
+              </label>
+              <input
+                type="url"
+                name="trailerVideoUrl"
+                value={formData.trailerVideoUrl}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                placeholder="https://www.youtube.com/watch?v=..."
               />
             </div>
 
@@ -489,22 +706,202 @@ export default function ManageCoursesPage() {
                 </div>
 
                 {formData.isLive && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
-                      লাইভ মিট লিংক
-                    </label>
-                    <input
-                      type="url"
-                      name="liveMeetingLink"
-                      value={formData.liveMeetingLink}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
-                      placeholder="https://meet.google.com/..."
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                        লাইভ মিট লিংক
+                      </label>
+                      <input
+                        type="url"
+                        name="liveMeetingLink"
+                        value={formData.liveMeetingLink}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                        placeholder="https://meet.google.com/..."
+                      />
+                    </div>
+
+                    {/* Class schedule */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                          ক্লাস রুটিন
+                        </label>
+                        <button
+                          type="button"
+                          onClick={addScheduleRow}
+                          className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition"
+                        >
+                          + রুটিন যোগ করুন
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {formData.classSchedule.map((row, index) => (
+                          <div key={index} className="flex flex-wrap items-center gap-2">
+                            <select
+                              value={row.day}
+                              onChange={(e) =>
+                                updateScheduleRow(index, { day: e.target.value })
+                              }
+                              className="px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                            >
+                              {dayOptions.map((d) => (
+                                <option key={d.value} value={d.value}>
+                                  {d.label}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              value={row.time}
+                              onChange={(e) =>
+                                updateScheduleRow(index, { time: e.target.value })
+                              }
+                              placeholder="রাত ৮:৩০"
+                              className="w-32 px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                            />
+                            <input
+                              type="text"
+                              value={row.subject}
+                              onChange={(e) =>
+                                updateScheduleRow(index, { subject: e.target.value })
+                              }
+                              placeholder="বিষয় (ঐচ্ছিক)"
+                              className="flex-1 min-w-[120px] px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeScheduleRow(index)}
+                              className="text-xs px-2 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                            >
+                              মুছুন
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </>
             )}
+
+            {/* FAQ */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  সচরাচর জিজ্ঞাসিত প্রশ্ন (FAQ)
+                </label>
+                <button
+                  type="button"
+                  onClick={addFaqRow}
+                  className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition"
+                >
+                  + প্রশ্ন যোগ করুন
+                </button>
+              </div>
+              <div className="space-y-3">
+                {formData.faqs.map((row, index) => (
+                  <div
+                    key={index}
+                    className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={row.question}
+                        onChange={(e) => updateFaqRow(index, { question: e.target.value })}
+                        placeholder="প্রশ্ন"
+                        className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeFaqRow(index)}
+                        className="text-xs px-2 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                      >
+                        মুছুন
+                      </button>
+                    </div>
+                    <textarea
+                      value={row.answer}
+                      onChange={(e) => updateFaqRow(index, { answer: e.target.value })}
+                      placeholder="উত্তর"
+                      rows={2}
+                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Testimonials */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  শিক্ষার্থীদের মতামত
+                </label>
+                <button
+                  type="button"
+                  onClick={addTestimonialRow}
+                  className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition"
+                >
+                  + মতামত যোগ করুন
+                </button>
+              </div>
+              <div className="space-y-3">
+                {formData.testimonials.map((row, index) => (
+                  <div
+                    key={index}
+                    className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 space-y-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="text"
+                        value={row.name}
+                        onChange={(e) => updateTestimonialRow(index, { name: e.target.value })}
+                        placeholder="শিক্ষার্থীর নাম"
+                        className="flex-1 min-w-[120px] px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={row.institution}
+                        onChange={(e) =>
+                          updateTestimonialRow(index, { institution: e.target.value })
+                        }
+                        placeholder="প্রতিষ্ঠান (ঐচ্ছিক)"
+                        className="flex-1 min-w-[120px] px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                      />
+                      <select
+                        value={row.rating}
+                        onChange={(e) =>
+                          updateTestimonialRow(index, { rating: Number(e.target.value) })
+                        }
+                        className="px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                      >
+                        {[5, 4, 3, 2, 1].map((r) => (
+                          <option key={r} value={r}>
+                            {r} স্টার
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => removeTestimonialRow(index)}
+                        className="text-xs px-2 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                      >
+                        মুছুন
+                      </button>
+                    </div>
+                    <textarea
+                      value={row.comment}
+                      onChange={(e) => updateTestimonialRow(index, { comment: e.target.value })}
+                      placeholder="মন্তব্য"
+                      rows={2}
+                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="flex gap-3">
               <button
@@ -568,6 +965,11 @@ export default function ManageCoursesPage() {
                   <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                     {course.type}
                   </span>
+                  {course.isLive && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-medium">
+                      লাইভ
+                    </span>
+                  )}
                   <span
                     className={`px-2 py-0.5 rounded-full font-medium ${
                       course.status === "approved"
@@ -626,7 +1028,7 @@ export default function ManageCoursesPage() {
                 {isAdminViewer && (
                   <button
                     onClick={() => handleFeatureToggle(course)}
-                    className="px-3 py-1.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-900/60 transition"
+                    className="px-3 py-1.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-900/60 transition"
                   >
                     {course.isFeatured ? "ফিচার্ড বাতিল" : "ফিচার্ড করুন"}
                   </button>

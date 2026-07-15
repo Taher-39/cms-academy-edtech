@@ -155,6 +155,17 @@ export async function updateCourse(courseId: string, body: any, userId: string, 
     body.liveMeetingLink = "";
   }
 
+  // findByIdAndUpdate skips the pre("save") discount hook — recompute here so
+  // an edited price/regularPrice keeps the discount badge accurate.
+  if (body.price !== undefined || body.regularPrice !== undefined) {
+    const effectiveRegularPrice =
+      body.regularPrice !== undefined ? Number(body.regularPrice) : course.regularPrice;
+    body.discountPercent =
+      effectiveRegularPrice && effectiveRegularPrice > effectivePrice
+        ? Math.round(((effectiveRegularPrice - effectivePrice) / effectiveRegularPrice) * 100)
+        : 0;
+  }
+
   const updated = await CourseModel.findByIdAndUpdate(courseId, body, {
     new: true,
     runValidators: true,
