@@ -12,6 +12,7 @@ interface Lecture {
   _id: string;
   title: string;
   description?: string;
+  chapter?: string;
   videoUrl?: string;
   noteUrl?: string;
   order: number;
@@ -33,6 +34,7 @@ function LectureManageContent() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    chapter: "",
     videoUrl: "",
     noteUrl: "",
     isFree: false,
@@ -67,7 +69,7 @@ function LectureManageContent() {
   };
 
   const resetForm = () => {
-    setFormData({ title: "", description: "", videoUrl: "", noteUrl: "", isFree: false });
+    setFormData({ title: "", description: "", chapter: "", videoUrl: "", noteUrl: "", isFree: false });
     setEditingId(null);
     setShowForm(false);
     setError("");
@@ -78,6 +80,7 @@ function LectureManageContent() {
     setFormData({
       title: lecture.title,
       description: lecture.description || "",
+      chapter: lecture.chapter || "",
       videoUrl: lecture.videoUrl || "",
       noteUrl: lecture.noteUrl || "",
       isFree: lecture.isFree,
@@ -229,6 +232,23 @@ function LectureManageContent() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                চ্যাপ্টার নাম
+              </label>
+              <input
+                type="text"
+                value={formData.chapter}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, chapter: e.target.value }))
+                }
+                placeholder="যেমন: অধ্যায় ১ - বীজগণিত"
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+              />
+              <p className="text-xs text-zinc-500 mt-1">
+                একই চ্যাপ্টার নাম দিলে লেকচারগুলো একসাথে গ্রুপ হয়ে দেখাবে
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
                 YouTube ভিডিও লিংক (Unlisted)
               </label>
               <input
@@ -309,6 +329,11 @@ function LectureManageContent() {
                     {lecture.title}
                   </h3>
                   <p className="text-xs text-zinc-500 truncate">
+                    {lecture.chapter && (
+                      <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 mr-1.5">
+                        {lecture.chapter}
+                      </span>
+                    )}
                     {lecture.videoUrl && "🎬 "}
                     {lecture.noteUrl && "📄 "}
                     {lecture.isFree && (

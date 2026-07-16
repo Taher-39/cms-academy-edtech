@@ -36,7 +36,7 @@ export async function handleIpn(req: Request, res: Response) {
 
 export async function handleSuccess(req: Request, res: Response) {
   try {
-    const result = await paymentService.handlePaymentSuccess(req.query);
+    const result = await paymentService.handlePaymentSuccess({ ...req.query, ...req.body });
     return res.redirect(result.redirect);
   } catch (error) {
     console.error("Payment success error:", error);

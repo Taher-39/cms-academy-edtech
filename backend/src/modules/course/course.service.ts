@@ -4,7 +4,15 @@ import { LectureModel } from "../../shared/models/Lecture";
 import { LiveClassModel } from "../../shared/models/LiveClass";
 import { QnAModel } from "../../shared/models/QnA";
 import { EnrollmentModel } from "../../shared/models/Enrollment";
+import { UserModel } from "../../shared/models/User";
 import cloudinary from "../../shared/config/cloudinary";
+
+async function assertIsTeacher(teacherId: string) {
+  const teacher = await UserModel.findById(teacherId).select("role");
+  if (!teacher || teacher.role !== "teacher") {
+    throw { status: 400, message: "নির্বাচিত ব্যবহারকারী একজন শিক্ষক নন" };
+  }
+}
 
 // ============ Courses ============
 
@@ -16,6 +24,7 @@ interface ListCoursesParams {
   search?: string;
   status?: string;
   featured?: string;
+  mine?: string;
   page: number;
   limit: number;
 }
@@ -39,7 +48,9 @@ export async function listCourses(params: ListCoursesParams, requester?: Request
 
   const isAdmin = requester?.role === "admin" || requester?.role === "superAdmin";
 
-  if (isAdmin) {
+  if (params.mine === "true" && requester) {
+    filter.teacher = requester.userId;
+  } else if (isAdmin) {
     if (params.status) filter.status = params.status;
   } else if (requester?.role === "teacher") {
     filter.$or = [{ status: "approved" }, { teacher: requester.userId }];
@@ -85,10 +96,12 @@ export async function getCourseById(courseId: string) {
   return { course };
 }
 
-export async function createCourse(data: any, teacherId: string) {
+export async function createCourse(data: any) {
   await connectToDB();
 
-  const courseData: Record<string, unknown> = { ...data, teacher: teacherId };
+  await assertIsTeacher(data.teacher);
+
+  const courseData: Record<string, unknown> = { ...data };
 
   // Convert valid date strings; remove empty/invalid ones
   if (typeof courseData.enrollStartDate === "string") {
@@ -131,7 +144,7 @@ export async function uploadCourseThumbnail(fileBuffer: Buffer) {
   return { message: "থাম্বনেইল আপলোড সফল", url: uploadResult.secure_url };
 }
 
-export async function updateCourse(courseId: string, body: any, userId: string, role: string) {
+export async function updateCourse(courseId: string, body: any) {
   await connectToDB();
 
   const course = await CourseModel.findById(courseId);
@@ -139,13 +152,8 @@ export async function updateCourse(courseId: string, body: any, userId: string, 
     throw { status: 404, message: "কোর্স পাওয়া যায়নি" };
   }
 
-  if (role !== "admin" && role !== "superAdmin" && course.teacher.toString() !== userId) {
-    throw { status: 403, message: "আপনার এই কোর্স সম্পাদনার অনুমতি নেই" };
-  }
-
-  if (role !== "admin" && role !== "superAdmin") {
-    delete body.status;
-    delete body.isFeatured;
+  if (body.teacher) {
+    await assertIsTeacher(body.teacher);
   }
 
   // Free courses are recorded-only — never allow a meet link to be attached.
@@ -174,16 +182,12 @@ export async function updateCourse(courseId: string, body: any, userId: string, 
   return { message: "কোর্স আপডেট সফল", course: updated };
 }
 
-export async function deleteCourse(courseId: string, userId: string, role: string) {
+export async function deleteCourse(courseId: string) {
   await connectToDB();
 
   const course = await CourseModel.findById(courseId);
   if (!course) {
     throw { status: 404, message: "কোর্স পাওয়া যায়নি" };
-  }
-
-  if (role !== "admin" && role !== "superAdmin" && course.teacher.toString() !== userId) {
-    throw { status: 403, message: "আপনার এই কোর্স মুছে ফেলার অনুমতি নেই" };
   }
 
   await CourseModel.findByIdAndDelete(courseId);
@@ -204,27 +208,30 @@ export async function listLectures(courseId: string, userId?: string, role?: str
     .sort({ order: 1 })
     .lean();
 
-  if (!userId) {
-    return { lectures: lectures.filter((l) => l.isFree), isEnrolled: false };
+  // superAdmin always has full access to every course. Admin does NOT get a blanket bypass
+  // anymore — they only unlock a course once superAdmin grants them a real enrollment for it.
+  const isPrivileged = role === "superAdmin" || role === "teacher";
+
+  let isEnrolled = false;
+  if (userId && !isPrivileged) {
+    const enrollment = await EnrollmentModel.findOne({
+      student: userId,
+      course: courseId,
+      expiryAt: { $gt: new Date() },
+    });
+    isEnrolled = !!enrollment;
   }
 
-  if (role === "admin" || role === "superAdmin" || role === "teacher") {
-    return { lectures, isEnrolled: true };
-  }
+  const hasFullAccess = isPrivileged || isEnrolled;
 
-  const enrollment = await EnrollmentModel.findOne({
-    student: userId,
-    course: courseId,
-    expiryAt: { $gt: new Date() },
-  });
+  // Always return every lecture (title/description stay visible so students can
+  // see the full syllabus) but strip the video/note links off locked ones so
+  // they can't be watched/downloaded before enrolling.
+  const visibleLectures = hasFullAccess
+    ? lectures
+    : lectures.map((l) => (l.isFree ? l : { ...l, videoUrl: undefined, noteUrl: undefined }));
 
-  const isEnrolled = !!enrollment;
-
-  if (!isEnrolled) {
-    return { lectures: lectures.filter((l) => l.isFree), isEnrolled: false };
-  }
-
-  return { lectures, isEnrolled: true };
+  return { lectures: visibleLectures, isEnrolled: hasFullAccess };
 }
 
 export async function createLecture(courseId: string, data: any, userId: string, role: string) {
@@ -250,6 +257,7 @@ export async function createLecture(courseId: string, data: any, userId: string,
     course: courseId,
     title: data.title,
     description: data.description,
+    chapter: data.chapter || "",
     videoUrl: data.videoUrl,
     noteUrl: data.noteUrl,
     order: nextOrder,

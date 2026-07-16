@@ -19,6 +19,8 @@ interface AppUser {
   createdAt: string;
 }
 
+const emptyTeacherForm = { name: "", email: "", password: "" };
+
 export default function UsersPage() {
   const router = useRouter();
   const { user, token } = useAuthStore();
@@ -26,6 +28,9 @@ export default function UsersPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [showTeacherForm, setShowTeacherForm] = useState(false);
+  const [teacherForm, setTeacherForm] = useState(emptyTeacherForm);
+  const [creatingTeacher, setCreatingTeacher] = useState(false);
 
   useEffect(() => {
     if (!token || (user?.role !== "admin" && user?.role !== "superAdmin")) {
@@ -63,6 +68,25 @@ export default function UsersPage() {
     }
   };
 
+  const handleCreateTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingTeacher(true);
+    try {
+      await api.post("/api/auth/users", { ...teacherForm, role: "teacher" });
+      addToast("শিক্ষক অ্যাকাউন্ট তৈরি করা হয়েছে!", "success");
+      setTeacherForm(emptyTeacherForm);
+      setShowTeacherForm(false);
+      fetchUsers();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "তৈরি করা ব্যর্থ";
+      addToast(msg, "error");
+    } finally {
+      setCreatingTeacher(false);
+    }
+  };
+
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       await api.put(`/api/auth/users/${userId}`, { role: newRole });
@@ -93,18 +117,99 @@ export default function UsersPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <Link
-          href="/dashboard"
-          className="text-sm text-zinc-800 dark:text-zinc-500 hover:underline mb-2 inline-block"
+      <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
+        <div>
+          <Link
+            href="/dashboard"
+            className="text-sm text-zinc-800 dark:text-zinc-500 hover:underline mb-2 inline-block"
+          >
+            &larr; ড্যাশবোর্ডে ফিরুন
+          </Link>
+          <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
+            👥 ব্যবহারকারী ব্যবস্থাপনা
+          </h1>
+          <p className="text-sm text-zinc-500 mt-1">সকল ব্যবহারকারীর তালিকা ও রোল ব্যবস্থাপনা</p>
+        </div>
+        <button
+          onClick={() => {
+            setTeacherForm(emptyTeacherForm);
+            setShowTeacherForm(true);
+          }}
+          className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-sm transition flex-shrink-0"
         >
-          &larr; ড্যাশবোর্ডে ফিরুন
-        </Link>
-        <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
-          👥 ব্যবহারকারী ব্যবস্থাপনা
-        </h1>
-        <p className="text-sm text-zinc-500 mt-1">সকল ব্যবহারকারীর তালিকা ও রোল ব্যবস্থাপনা</p>
+          + শিক্ষক তৈরি করুন
+        </button>
       </div>
+
+      {showTeacherForm && (
+        <div className="mb-8 p-6 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+          <h2 className="text-lg font-semibold mb-4 text-zinc-800 dark:text-zinc-100">
+            নতুন শিক্ষক অ্যাকাউন্ট তৈরি করুন
+          </h2>
+          <p className="text-xs text-zinc-500 mb-4">
+            ইমেইল ও পাসওয়ার্ড দিয়ে সরাসরি অ্যাকাউন্ট তৈরি হবে (OTP লাগবে না) — শিক্ষককে তার লগইন তথ্য ইমেইলে পাঠানো হবে।
+          </p>
+          <form onSubmit={handleCreateTeacher} className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  নাম *
+                </label>
+                <input
+                  type="text"
+                  value={teacherForm.name}
+                  onChange={(e) => setTeacherForm((prev) => ({ ...prev, name: e.target.value }))}
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  ইমেইল *
+                </label>
+                <input
+                  type="email"
+                  value={teacherForm.email}
+                  onChange={(e) => setTeacherForm((prev) => ({ ...prev, email: e.target.value }))}
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  পাসওয়ার্ড *
+                </label>
+                <input
+                  type="text"
+                  value={teacherForm.password}
+                  onChange={(e) =>
+                    setTeacherForm((prev) => ({ ...prev, password: e.target.value }))
+                  }
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={creatingTeacher}
+                className="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-500 text-white rounded-lg font-medium transition"
+              >
+                {creatingTeacher ? "তৈরি হচ্ছে..." : "তৈরি করুন"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTeacherForm(false)}
+                className="px-6 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition text-zinc-700 dark:text-zinc-300"
+              >
+                বাতিল
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {users.length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700">

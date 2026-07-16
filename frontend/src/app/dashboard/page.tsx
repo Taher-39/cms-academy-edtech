@@ -67,16 +67,25 @@ export default function DashboardPage() {
           </h1>
           <p className="text-zinc-500 mt-1">
             স্বাগতম, {user.name}!
-            {isAdmin && (
-              <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
-                অ্যাডমিন
-              </span>
-            )}
-            {isTeacher && (
-              <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
-                শিক্ষক
-              </span>
-            )}
+            <span
+              className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${
+                user.role === "student"
+                  ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                  : user.role === "teacher"
+                  ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"
+                  : user.role === "superAdmin"
+                  ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300"
+                  : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300"
+              }`}
+            >
+              {user.role === "student"
+                ? "শিক্ষার্থী"
+                : user.role === "teacher"
+                ? "শিক্ষক"
+                : user.role === "superAdmin"
+                ? "সুপার অ্যাডমিন"
+                : "অ্যাডমিন"}
+            </span>
           </p>
         </div>
 
@@ -199,7 +208,7 @@ export default function DashboardPage() {
                     </h3>
                     <div className="w-full h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden mb-1">
                       <div
-                        className="h-full bg-[#C89B3C]"
+                        className="h-full bg-[#D97757]"
                         style={{ width: `${enrollment.progress.percent}%` }}
                       />
                     </div>
@@ -284,7 +293,7 @@ export default function DashboardPage() {
                       <div className="mt-2">
                         <div className="w-full h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
                           <div
-                            className="h-full bg-[#C89B3C]"
+                            className="h-full bg-[#D97757]"
                             style={{ width: `${enrollment.progress.percent}%` }}
                           />
                         </div>

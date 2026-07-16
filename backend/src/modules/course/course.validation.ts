@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const createCourseSchema = z.object({
   title: z.string().min(1, "শিরোনাম আবশ্যক"),
+  teacher: z.string().min(1, "শিক্ষক নির্বাচন আবশ্যক"),
   description: z.string().min(1, "বিবরণ আবশ্যক"),
   category: z.enum(["academic", "job"]),
   classLevel: z.enum(["6-8", "9-10", "11-12", "job"]),
@@ -52,6 +53,7 @@ export const createCourseSchema = z.object({
 export const createLectureSchema = z.object({
   title: z.string().min(1, "শিরোনাম আবশ্যক"),
   description: z.string().optional(),
+  chapter: z.string().optional(),
   videoUrl: z.string().optional(),
   noteUrl: z.string().optional(),
   isFree: z.boolean().optional(),

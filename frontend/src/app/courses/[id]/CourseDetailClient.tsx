@@ -60,10 +60,32 @@ interface LectureData {
   _id: string;
   title: string;
   description?: string;
+  chapter?: string;
   videoUrl?: string;
   noteUrl?: string;
   order: number;
   isFree: boolean;
+}
+
+interface ChapterGroup {
+  key: string;
+  name: string;
+  lectures: LectureData[];
+}
+
+function groupLecturesByChapter(lectures: LectureData[]): ChapterGroup[] {
+  const groups: ChapterGroup[] = [];
+  const indexByKey = new Map<string, number>();
+  lectures.forEach((lecture) => {
+    const name = lecture.chapter?.trim() || "";
+    const key = name || "__uncategorized__";
+    if (!indexByKey.has(key)) {
+      indexByKey.set(key, groups.length);
+      groups.push({ key, name, lectures: [] });
+    }
+    groups[indexByKey.get(key)!].lectures.push(lecture);
+  });
+  return groups;
 }
 
 interface LiveClassData {
@@ -108,6 +130,60 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+function LectureItem({
+  lecture,
+  index,
+  isEnrolled,
+}: {
+  lecture: LectureData;
+  index: number;
+  isEnrolled: boolean;
+}) {
+  const unlocked = lecture.isFree || isEnrolled;
+  return (
+    <>
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h3 className="font-medium text-zinc-800 dark:text-zinc-100 flex items-center gap-1.5">
+            {!unlocked && <span className="text-zinc-400">🔒</span>}
+            {index + 1}. {lecture.title}
+          </h3>
+          {lecture.description && (
+            <p className="text-sm text-zinc-500 mt-1">{lecture.description}</p>
+          )}
+        </div>
+        {lecture.isFree && (
+          <span className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 ml-2">
+            ফ্রি
+          </span>
+        )}
+      </div>
+
+      {unlocked && (
+        <div className="mt-3 space-y-3">
+          {lecture.videoUrl && (
+            <YouTubeEmbed url={lecture.videoUrl} title={lecture.title} />
+          )}
+          {lecture.noteUrl && (
+            <a
+              href={lecture.noteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm px-4 py-2 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/60 transition"
+            >
+              📄 নোট ডাউনলোড করুন
+            </a>
+          )}
+        </div>
+      )}
+
+      {!unlocked && (
+        <p className="text-xs text-zinc-400 mt-2">🔒 এই লেকচারটি দেখতে এনরোল করুন</p>
+      )}
+    </>
+  );
+}
+
 export default function CourseDetailClient({
   course,
   lectures: initialLectures,
@@ -123,6 +199,26 @@ export default function CourseDetailClient({
   const [paymentMsg, setPaymentMsg] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [openChapters, setOpenChapters] = useState<Set<string>>(() => {
+    const initialGroups = groupLecturesByChapter(initialLectures);
+    const initialHasChapters =
+      initialGroups.length > 1 || (initialGroups[0]?.name || "") !== "";
+    return initialHasChapters && initialGroups.length > 0
+      ? new Set([initialGroups[0].key])
+      : new Set();
+  });
+
+  const chapterGroups = groupLecturesByChapter(lectures);
+  const hasChapters = chapterGroups.length > 1 || (chapterGroups[0]?.name || "") !== "";
+
+  const toggleChapter = (key: string) => {
+    setOpenChapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const paymentStatus = searchParams.get("payment");
 
@@ -480,6 +576,48 @@ export default function CourseDetailClient({
             </h2>
             {lectures.length === 0 ? (
               <p className="text-zinc-500">কোনো লেকচার নেই</p>
+            ) : hasChapters ? (
+              <div className="space-y-3">
+                {chapterGroups.map((group) => {
+                  const isOpen = openChapters.has(group.key);
+                  return (
+                    <div
+                      key={group.key}
+                      className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden"
+                    >
+                      <button
+                        onClick={() => toggleChapter(group.key)}
+                        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition"
+                      >
+                        <span className="font-medium text-zinc-800 dark:text-zinc-100">
+                          {group.name || "অন্যান্য লেকচার"}
+                        </span>
+                        <span className="flex items-center gap-2 text-xs text-zinc-500">
+                          {group.lectures.length} টি লেকচার
+                          <span
+                            className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          >
+                            ▾
+                          </span>
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <div className="border-t border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-100 dark:divide-zinc-800">
+                          {group.lectures.map((lecture, index) => (
+                            <div key={lecture._id} className="p-4">
+                              <LectureItem
+                                lecture={lecture}
+                                index={index}
+                                isEnrolled={isEnrolled}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="space-y-3">
                 {lectures.map((lecture, index) => (
@@ -487,47 +625,7 @@ export default function CourseDetailClient({
                     key={lecture._id}
                     className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-zinc-800 dark:text-zinc-100">
-                          {index + 1}. {lecture.title}
-                        </h3>
-                        {lecture.description && (
-                          <p className="text-sm text-zinc-500 mt-1">
-                            {lecture.description}
-                          </p>
-                        )}
-                      </div>
-                      {lecture.isFree && (
-                        <span className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 ml-2">
-                          ফ্রি
-                        </span>
-                      )}
-                    </div>
-
-                    {(lecture.isFree || isEnrolled) && (
-                      <div className="mt-3 space-y-3">
-                        {lecture.videoUrl && (
-                          <YouTubeEmbed url={lecture.videoUrl} title={lecture.title} />
-                        )}
-                        {lecture.noteUrl && (
-                          <a
-                            href={lecture.noteUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-sm px-4 py-2 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/60 transition"
-                          >
-                            📄 নোট ডাউনলোড করুন
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {!lecture.isFree && !isEnrolled && (
-                      <p className="text-xs text-zinc-400 mt-2">
-                        এই লেকচারটি দেখতে এনরোল করুন
-                      </p>
-                    )}
+                    <LectureItem lecture={lecture} index={index} isEnrolled={isEnrolled} />
                   </div>
                 ))}
               </div>

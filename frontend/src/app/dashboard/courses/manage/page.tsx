@@ -26,6 +26,17 @@ interface TestimonialRow {
   comment: string;
 }
 
+interface Teacher {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+interface Category {
+  _id: string;
+  name: string;
+}
+
 interface Course {
   _id: string;
   title: string;
@@ -34,6 +45,7 @@ interface Course {
   classLevel: string;
   subject: string;
   type: string;
+  teacher?: Teacher | string;
   price: number;
   regularPrice?: number;
   outline?: string;
@@ -62,6 +74,7 @@ interface CourseFormData {
   category: string;
   classLevel: string;
   subject: string;
+  teacherId: string;
   type: string;
   price: number;
   regularPrice: number;
@@ -96,6 +109,7 @@ const initialFormData: CourseFormData = {
   category: "academic",
   classLevel: "9-10",
   subject: "",
+  teacherId: "",
   type: "full",
   price: 0,
   regularPrice: 0,
@@ -119,6 +133,8 @@ export default function ManageCoursesPage() {
   const { user, token } = useAuthStore();
   const { addToast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -142,16 +158,40 @@ export default function ManageCoursesPage() {
       return;
     }
     fetchCourses();
+    if (user?.role === "admin" || user?.role === "superAdmin") {
+      fetchTeachers();
+      fetchCategories();
+    }
   }, [token, user, router]);
 
   const fetchCourses = async () => {
     try {
-      const res = await api.get("/api/courses");
+      const params = user?.role === "teacher" ? { mine: "true" } : {};
+      const res = await api.get("/api/courses", { params });
       setCourses(res.data.courses);
     } catch {
       addToast("কোর্স লোড করা যায়নি", "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    try {
+      const res = await api.get("/api/auth/users");
+      const allUsers = (res.data.users || []) as (Teacher & { role: string })[];
+      setTeachers(allUsers.filter((u) => u.role === "teacher"));
+    } catch {
+      addToast("শিক্ষকদের তালিকা লোড করা যায়নি", "error");
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await api.get("/api/categories");
+      setCategories(res.data.categories || []);
+    } catch {
+      addToast("বিষয়ের তালিকা লোড করা যায়নি", "error");
     }
   };
 
@@ -243,6 +283,7 @@ export default function ManageCoursesPage() {
       category: course.category,
       classLevel: course.classLevel,
       subject: course.subject,
+      teacherId: typeof course.teacher === "object" ? course.teacher?._id || "" : course.teacher || "",
       type: course.type,
       price: course.price,
       regularPrice: course.regularPrice || 0,
@@ -307,6 +348,7 @@ export default function ManageCoursesPage() {
       category: formData.category,
       classLevel: formData.classLevel,
       subject: formData.subject,
+      teacher: formData.teacherId,
       type: formData.type,
       price: formData.price,
       regularPrice: formData.regularPrice || undefined,
@@ -417,22 +459,24 @@ export default function ManageCoursesPage() {
             কোর্স ম্যানেজমেন্ট
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
-            {user?.role === "admin" ? "সব কোর্স পরিচালনা করুন" : "আপনার কোর্সগুলি পরিচালনা করুন"}
+            {isAdminViewer ? "সব কোর্স পরিচালনা করুন" : "আপনাকে অ্যাসাইন করা কোর্সগুলির লেকচার পরিচালনা করুন"}
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-          className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 hover:bg-zinc-900 text-white rounded-lg text-sm transition"
-        >
-          + নতুন কোর্স
-        </button>
+        {isAdminViewer && (
+          <button
+            onClick={() => {
+              resetForm();
+              setShowForm(true);
+            }}
+            className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 hover:bg-zinc-900 text-white rounded-lg text-sm transition"
+          >
+            + নতুন কোর্স
+          </button>
+        )}
       </div>
 
       {/* Create/Edit Form */}
-      {showForm && (
+      {isAdminViewer && showForm && (
         <div className="mb-8 p-6 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
           <h2 className="text-lg font-semibold mb-4 text-zinc-800 dark:text-zinc-100">
             {editingId ? "কোর্স এডিট করুন" : "নতুন কোর্স তৈরি করুন"}
@@ -459,12 +503,51 @@ export default function ManageCoursesPage() {
                 <input
                   type="text"
                   name="subject"
+                  list="subject-categories"
                   value={formData.subject}
                   onChange={handleInputChange}
                   required
                   className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
-                  placeholder="যেমন: গণিত, উচ্চতর গণিত, আইসিটি"
+                  placeholder="যেমন: গণিত, আইসিটি, বিজ্ঞান, টেক — বা নতুন যেকোনো বিষয়"
                 />
+                <datalist id="subject-categories">
+                  {categories.map((c) => (
+                    <option key={c._id} value={c.name} />
+                  ))}
+                </datalist>
+                <Link
+                  href="/dashboard/categories"
+                  className="text-xs text-zinc-800 dark:text-zinc-500 hover:underline mt-1 inline-block"
+                >
+                  + নতুন বিষয় যোগ করুন
+                </Link>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                  শিক্ষক *
+                </label>
+                <select
+                  name="teacherId"
+                  value={formData.teacherId}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none"
+                >
+                  <option value="">-- শিক্ষক নির্বাচন করুন --</option>
+                  {teachers.map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name} ({t.email})
+                    </option>
+                  ))}
+                </select>
+                {teachers.length === 0 && (
+                  <p className="text-xs text-zinc-500 mt-1">
+                    কোনো শিক্ষক নেই —{" "}
+                    <Link href="/dashboard/users" className="underline">
+                      প্রথমে একজন শিক্ষক তৈরি করুন
+                    </Link>
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300">
@@ -931,16 +1014,20 @@ export default function ManageCoursesPage() {
       <div className="space-y-3">
         {courses.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700">
-            <p className="text-zinc-500 mb-2">কোনো কোর্স নেই</p>
-            <button
-              onClick={() => {
-                resetForm();
-                setShowForm(true);
-              }}
-              className="text-zinc-800 dark:text-zinc-500 hover:underline text-sm"
-            >
-              প্রথম কোর্স তৈরি করুন
-            </button>
+            <p className="text-zinc-500 mb-2">
+              {isAdminViewer ? "কোনো কোর্স নেই" : "আপনাকে এখনো কোনো কোর্স অ্যাসাইন করা হয়নি"}
+            </p>
+            {isAdminViewer && (
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowForm(true);
+                }}
+                className="text-zinc-800 dark:text-zinc-500 hover:underline text-sm"
+              >
+                প্রথম কোর্স তৈরি করুন
+              </button>
+            )}
           </div>
         ) : (
           courses.map((course) => (
@@ -962,6 +1049,11 @@ export default function ManageCoursesPage() {
                   <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400">
                     {course.subject}
                   </span>
+                  {typeof course.teacher === "object" && course.teacher?.name && (
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                      👤 {course.teacher.name}
+                    </span>
+                  )}
                   <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
                     {course.type}
                   </span>
@@ -1033,18 +1125,22 @@ export default function ManageCoursesPage() {
                     {course.isFeatured ? "ফিচার্ড বাতিল" : "ফিচার্ড করুন"}
                   </button>
                 )}
-                <button
-                  onClick={() => handleEdit(course)}
-                  className="px-3 py-1.5 text-xs bg-zinc-100 dark:bg-zinc-900/40 text-zinc-900 dark:text-zinc-400 rounded-lg hover:bg-zinc-300 dark:hover:bg-blue-900/60 transition"
-                >
-                  এডিট
-                </button>
-                <button
-                  onClick={() => setDeleteTarget(course._id)}
-                  className="px-3 py-1.5 text-xs bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition"
-                >
-                  ডিলিট
-                </button>
+                {isAdminViewer && (
+                  <button
+                    onClick={() => handleEdit(course)}
+                    className="px-3 py-1.5 text-xs bg-zinc-100 dark:bg-zinc-900/40 text-zinc-900 dark:text-zinc-400 rounded-lg hover:bg-zinc-300 dark:hover:bg-blue-900/60 transition"
+                  >
+                    এডিট
+                  </button>
+                )}
+                {isAdminViewer && (
+                  <button
+                    onClick={() => setDeleteTarget(course._id)}
+                    className="px-3 py-1.5 text-xs bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition"
+                  >
+                    ডিলিট
+                  </button>
+                )}
               </div>
             </div>
           ))

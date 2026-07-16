@@ -166,6 +166,8 @@ export default function ProfilePage() {
                 ? "শিক্ষার্থী"
                 : user.role === "teacher"
                 ? "শিক্ষক"
+                : user.role === "superAdmin"
+                ? "সুপার অ্যাডমিন"
                 : "অ্যাডমিন"}
             </span>
           </div>

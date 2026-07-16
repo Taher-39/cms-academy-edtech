@@ -26,6 +26,30 @@ router.post(
   enrollmentController.refundEnrollmentHandler
 );
 
+// POST /api/enrollments/admin/grant — grant an admin free access to a course (superAdmin only)
+router.post(
+  "/admin/grant",
+  authMiddleware,
+  requireRole("superAdmin"),
+  enrollmentController.grantFreeAccessHandler
+);
+
+// GET /api/enrollments/admin/grants — list granted free-access records (superAdmin only)
+router.get(
+  "/admin/grants",
+  authMiddleware,
+  requireRole("superAdmin"),
+  enrollmentController.listGrantedAccessHandler
+);
+
+// DELETE /api/enrollments/admin/grant/:id — revoke a granted free-access record (superAdmin only)
+router.delete(
+  "/admin/grant/:id",
+  authMiddleware,
+  requireRole("superAdmin"),
+  enrollmentController.revokeFreeAccessHandler
+);
+
 // GET /api/enrollments/:courseId/access — check access
 router.get("/:courseId/access", authMiddleware, enrollmentController.checkAccess);
 

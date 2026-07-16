@@ -7,6 +7,7 @@ const LectureSchema = new Schema(
     course: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, required: false },
+    chapter: { type: String, required: false, trim: true, default: "" },
     videoUrl: { type: String, required: false },
     noteUrl: { type: String, required: false },
     order: { type: Number, required: true, min: 0 },

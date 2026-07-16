@@ -6,7 +6,8 @@ import * as courseController from "./course.controller";
 const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  // Kept under Vercel's 4.5MB serverless request-body cap
+  limits: { fileSize: 4 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith("image/")) {
       return cb(new Error("শুধুমাত্র ছবি ফাইল আপলোড করা যাবে"));
@@ -20,14 +21,14 @@ router.get("/", optionalAuth, courseController.listCourses);
 router.post(
   "/thumbnail",
   authMiddleware,
-  requireRole("admin", "superAdmin", "teacher"),
+  requireRole("admin", "superAdmin"),
   upload.single("thumbnail"),
   courseController.uploadThumbnail
 );
 router.get("/:courseId", courseController.getCourseById);
-router.post("/", authMiddleware, requireRole("admin", "superAdmin", "teacher"), courseController.createCourse);
-router.put("/:courseId", authMiddleware, courseController.updateCourse);
-router.delete("/:courseId", authMiddleware, courseController.deleteCourse);
+router.post("/", authMiddleware, requireRole("admin", "superAdmin"), courseController.createCourse);
+router.put("/:courseId", authMiddleware, requireRole("admin", "superAdmin"), courseController.updateCourse);
+router.delete("/:courseId", authMiddleware, requireRole("admin", "superAdmin"), courseController.deleteCourse);
 
 // Lectures
 router.get("/:courseId/lectures", optionalAuth, courseController.listLectures);

@@ -54,6 +54,8 @@ export default function DashboardLayout({
     { href: "/dashboard/payments", label: user.role === "student" ? "💳 পেমেন্ট" : "💳 লেনদেন", roles: ["student", "admin", "superAdmin"] },
     { href: "/dashboard/analytics", label: "📊 অ্যানালিটিক্স", roles: ["admin", "superAdmin"] },
     { href: "/dashboard/coupons", label: "🎟️ কুপন", roles: ["admin", "superAdmin"] },
+    { href: "/dashboard/categories", label: "📁 বিষয়/ক্যাটাগরি", roles: ["admin", "superAdmin"] },
+    { href: "/dashboard/admin-access", label: "🔑 এডমিন অ্যাক্সেস", roles: ["superAdmin"] },
     { href: "/dashboard/site-content", label: "🖋️ সাইট কনটেন্ট", roles: ["superAdmin"] },
   ];
 

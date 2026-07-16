@@ -24,6 +24,9 @@ const EnrollmentSchema = new Schema(
     refundRemarks: { type: String, required: false },
     refundRefId: { type: String, required: false },
     watchedLectures: [{ type: Schema.Types.ObjectId, ref: "Lecture" }],
+    // Set when this enrollment was manually created by an admin/superAdmin grant
+    // rather than through self-enrollment or payment — records who granted it.
+    grantedBy: { type: Schema.Types.ObjectId, ref: "User", required: false },
   },
   { timestamps: true }
 );

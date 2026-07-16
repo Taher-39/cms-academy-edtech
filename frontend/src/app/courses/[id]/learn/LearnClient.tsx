@@ -18,6 +18,7 @@ interface LectureData {
   _id: string;
   title: string;
   description?: string;
+  chapter?: string;
   videoUrl?: string;
   noteUrl?: string;
   order: number;
@@ -27,6 +28,27 @@ interface LectureData {
 interface Props {
   course: CourseData;
   lectures: LectureData[];
+}
+
+interface ChapterGroup {
+  key: string;
+  name: string;
+  items: { lecture: LectureData; idx: number }[];
+}
+
+function groupLecturesByChapter(lectures: LectureData[]): ChapterGroup[] {
+  const groups: ChapterGroup[] = [];
+  const indexByKey = new Map<string, number>();
+  lectures.forEach((lecture, idx) => {
+    const name = lecture.chapter?.trim() || "";
+    const key = name || "__uncategorized__";
+    if (!indexByKey.has(key)) {
+      indexByKey.set(key, groups.length);
+      groups.push({ key, name, items: [] });
+    }
+    groups[indexByKey.get(key)!].items.push({ lecture, idx });
+  });
+  return groups;
 }
 
 export default function LearnClient({ course, lectures: initialLectures }: Props) {
@@ -41,6 +63,39 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
   const [tab, setTab] = useState<"video" | "qna">("video");
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [marking, setMarking] = useState(false);
+  const [openChapters, setOpenChapters] = useState<Set<string>>(() => {
+    const initialGroups = groupLecturesByChapter(initialLectures);
+    const initialHasChapters =
+      initialGroups.length > 1 || (initialGroups[0]?.name || "") !== "";
+    return initialHasChapters && initialGroups.length > 0
+      ? new Set([initialGroups[0].key])
+      : new Set();
+  });
+
+  const chapterGroups = groupLecturesByChapter(lectures);
+  const hasChapters = chapterGroups.length > 1 || (chapterGroups[0]?.name || "") !== "";
+
+  // If the active lecture (e.g. after resuming progress) lands in a chapter
+  // that isn't open yet, expand it so the lecture is visible.
+  useEffect(() => {
+    if (!hasChapters) return;
+    const activeGroup = chapterGroups.find((g) =>
+      g.items.some((it) => it.idx === activeIndex)
+    );
+    if (activeGroup && !openChapters.has(activeGroup.key)) {
+      setOpenChapters((prev) => new Set(prev).add(activeGroup.key));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, lectures]);
+
+  const toggleChapter = (key: string) => {
+    setOpenChapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -160,38 +215,96 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
               চ্যাপ্টারসমূহ ({lectures.length})
             </div>
             <div className="max-h-[70vh] overflow-y-auto">
-              {lectures.map((l, idx) => {
-                const unlocked = canWatch(l, idx);
-                const isActive = idx === activeIndex;
-                return (
-                  <button
-                    key={l._id}
-                    onClick={() => {
-                      setActiveIndex(idx);
-                      setTab("video");
-                    }}
-                    className={`w-full text-left px-4 py-3 flex items-start gap-2 border-b border-zinc-100 dark:border-zinc-800 transition ${
-                      isActive
-                        ? "bg-zinc-100 dark:bg-zinc-800"
-                        : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                    }`}
-                  >
-                    <span className="mt-0.5 text-xs">
-                      {watched.has(l._id) ? "✅" : unlocked ? "▶️" : "🔒"}
-                    </span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-sm text-zinc-800 dark:text-zinc-100 truncate">
-                        {idx + 1}. {l.title}
-                      </span>
-                      {l.isFree && (
-                        <span className="text-[10px] text-green-600 dark:text-green-400">
-                          ফ্রি
+              {hasChapters
+                ? chapterGroups.map((group) => {
+                    const isOpen = openChapters.has(group.key);
+                    return (
+                      <div key={group.key} className="border-b border-zinc-100 dark:border-zinc-800">
+                        <button
+                          onClick={() => toggleChapter(group.key)}
+                          className="w-full text-left px-4 py-3 flex items-center justify-between gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition"
+                        >
+                          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                            {group.name || "অন্যান্য লেকচার"}
+                          </span>
+                          <span className="flex items-center gap-2 text-xs text-zinc-500">
+                            {group.items.length}
+                            <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>
+                              ▾
+                            </span>
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div>
+                            {group.items.map(({ lecture: l, idx }) => {
+                              const unlocked = canWatch(l, idx);
+                              const isActive = idx === activeIndex;
+                              return (
+                                <button
+                                  key={l._id}
+                                  onClick={() => {
+                                    setActiveIndex(idx);
+                                    setTab("video");
+                                  }}
+                                  className={`w-full text-left pl-6 pr-4 py-2.5 flex items-start gap-2 border-t border-zinc-100 dark:border-zinc-800 transition ${
+                                    isActive
+                                      ? "bg-zinc-100 dark:bg-zinc-800"
+                                      : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                                  }`}
+                                >
+                                  <span className="mt-0.5 text-xs">
+                                    {watched.has(l._id) ? "✅" : unlocked ? "▶️" : "🔒"}
+                                  </span>
+                                  <span className="flex-1 min-w-0">
+                                    <span className="block text-sm text-zinc-800 dark:text-zinc-100 truncate">
+                                      {idx + 1}. {l.title}
+                                    </span>
+                                    {l.isFree && (
+                                      <span className="text-[10px] text-green-600 dark:text-green-400">
+                                        ফ্রি
+                                      </span>
+                                    )}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                : lectures.map((l, idx) => {
+                    const unlocked = canWatch(l, idx);
+                    const isActive = idx === activeIndex;
+                    return (
+                      <button
+                        key={l._id}
+                        onClick={() => {
+                          setActiveIndex(idx);
+                          setTab("video");
+                        }}
+                        className={`w-full text-left px-4 py-3 flex items-start gap-2 border-b border-zinc-100 dark:border-zinc-800 transition ${
+                          isActive
+                            ? "bg-zinc-100 dark:bg-zinc-800"
+                            : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                        }`}
+                      >
+                        <span className="mt-0.5 text-xs">
+                          {watched.has(l._id) ? "✅" : unlocked ? "▶️" : "🔒"}
                         </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm text-zinc-800 dark:text-zinc-100 truncate">
+                            {idx + 1}. {l.title}
+                          </span>
+                          {l.isFree && (
+                            <span className="text-[10px] text-green-600 dark:text-green-400">
+                              ফ্রি
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
               {lectures.length === 0 && (
                 <p className="px-4 py-6 text-sm text-zinc-500">কোনো লেকচার নেই</p>
               )}
@@ -305,7 +418,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
                       </p>
                       <Link
                         href={`/courses/${course._id}`}
-                        className="px-6 py-2.5 bg-[#C89B3C] hover:opacity-90 text-white rounded-lg font-medium transition inline-block"
+                        className="px-6 py-2.5 bg-[#D97757] hover:opacity-90 text-white rounded-lg font-medium transition inline-block"
                       >
                         এনরোল করুন
                       </Link>

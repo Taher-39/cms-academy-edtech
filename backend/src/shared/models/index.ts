@@ -6,3 +6,4 @@ export * from "./QnA";
 export * from "./LiveClass";
 export * from "./Coupon";
 export * from "./Settings";
+export * from "./Category";

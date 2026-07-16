@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as enrollmentService from "./enrollment.service";
-import { enrollSchema } from "./enrollment.validation";
+import { enrollSchema, grantAccessSchema } from "./enrollment.validation";
 
 export async function enroll(req: Request, res: Response) {
   try {
@@ -34,7 +34,11 @@ export async function getEnrollments(req: Request, res: Response) {
 
 export async function checkAccess(req: Request, res: Response) {
   try {
-    const result = await enrollmentService.checkAccess(req.user!.userId, req.params.courseId);
+    const result = await enrollmentService.checkAccess(
+      req.user!.userId,
+      req.params.courseId,
+      req.user!.role
+    );
     return res.status(200).json(result);
   } catch (error) {
     console.error("Access check error:", error);
@@ -71,6 +75,48 @@ export async function getAllEnrollmentsHandler(req: Request, res: Response) {
     return res.status(200).json(result);
   } catch (error) {
     console.error("Get all enrollments error:", error);
+    return res.status(500).json({ message: "সার্ভার ত্রুটি" });
+  }
+}
+
+export async function grantFreeAccessHandler(req: Request, res: Response) {
+  try {
+    const parsed = grantAccessSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: parsed.error.issues.map((e) => e.message).join(", "),
+      });
+    }
+    const result = await enrollmentService.grantFreeAccess(
+      parsed.data.userId,
+      parsed.data.courseId,
+      req.user!.userId
+    );
+    return res.status(201).json(result);
+  } catch (error: any) {
+    console.error("Grant free access error:", error);
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    return res.status(500).json({ message: "সার্ভার ত্রুটি" });
+  }
+}
+
+export async function listGrantedAccessHandler(_req: Request, res: Response) {
+  try {
+    const result = await enrollmentService.listGrantedAccess();
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("List granted access error:", error);
+    return res.status(500).json({ message: "সার্ভার ত্রুটি" });
+  }
+}
+
+export async function revokeFreeAccessHandler(req: Request, res: Response) {
+  try {
+    const result = await enrollmentService.revokeFreeAccess(req.params.id);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error("Revoke free access error:", error);
+    if (error.status) return res.status(error.status).json({ message: error.message });
     return res.status(500).json({ message: "সার্ভার ত্রুটি" });
   }
 }

@@ -20,6 +20,7 @@ export async function listCourses(req: Request, res: Response) {
         search: req.query.search as string,
         status: req.query.status as string,
         featured: req.query.featured as string,
+        mine: req.query.mine as string,
         page: parseInt((req.query.page as string) || "1"),
         limit: parseInt((req.query.limit as string) || "12"),
       },
@@ -66,7 +67,7 @@ export async function createCourse(req: Request, res: Response) {
         message: parsed.error.issues.map((e) => e.message).join(", "),
       });
     }
-    const result = await courseService.createCourse(parsed.data, req.user!.userId);
+    const result = await courseService.createCourse(parsed.data);
     return res.status(201).json(result);
   } catch (error: any) {
     console.error("POST course error:", error);
@@ -77,12 +78,7 @@ export async function createCourse(req: Request, res: Response) {
 
 export async function updateCourse(req: Request, res: Response) {
   try {
-    const result = await courseService.updateCourse(
-      req.params.courseId,
-      req.body,
-      req.user!.userId,
-      req.user!.role || ""
-    );
+    const result = await courseService.updateCourse(req.params.courseId, req.body);
     return res.status(200).json(result);
   } catch (error: any) {
     console.error("PUT course error:", error);
@@ -93,11 +89,7 @@ export async function updateCourse(req: Request, res: Response) {
 
 export async function deleteCourse(req: Request, res: Response) {
   try {
-    const result = await courseService.deleteCourse(
-      req.params.courseId,
-      req.user!.userId,
-      req.user!.role || ""
-    );
+    const result = await courseService.deleteCourse(req.params.courseId);
     return res.status(200).json(result);
   } catch (error: any) {
     console.error("DELETE course error:", error);

@@ -158,7 +158,7 @@ export default function MyCoursesPage() {
                     </div>
                     <div className="w-full h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
                       <div
-                        className="h-full bg-[#C89B3C] transition-all"
+                        className="h-full bg-[#D97757] transition-all"
                         style={{ width: `${enrollment.progress.percent}%` }}
                       />
                     </div>
@@ -193,7 +193,7 @@ export default function MyCoursesPage() {
                 ) : (
                   <Link
                     href={`/courses/${enrollment.course._id}`}
-                    className="block text-center w-full py-2 bg-[#C89B3C] hover:opacity-90 text-white rounded-lg text-sm font-medium transition"
+                    className="block text-center w-full py-2 bg-[#D97757] hover:opacity-90 text-white rounded-lg text-sm font-medium transition"
                   >
                     পুনরায় এনরোল করুন
                   </Link>

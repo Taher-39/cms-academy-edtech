@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Header from "./Header";
 import Footer from "./Footer";
+import FloatingAssistant from "./FloatingAssistant";
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -39,6 +40,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             &copy; {new Date().getFullYear()} CMS Academy. সমস্ত অধিকার সংরক্ষিত।
           </div>
         </footer>
+        <FloatingAssistant />
       </>
     );
   }
@@ -49,6 +51,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
+      <FloatingAssistant />
     </>
   );
 }

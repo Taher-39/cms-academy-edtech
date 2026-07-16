@@ -1,11 +1,65 @@
 import { Router, Request, Response } from "express";
+import bcrypt from "bcryptjs";
 import { authMiddleware, requireRole } from "../../shared/middleware/auth.middleware";
 import { UserModel, userRoles } from "../../shared/models/User";
 import { connectToDB } from "../../shared/lib/db";
+import { sendAccountCreatedEmail } from "../../shared/utils/emailService";
 
 const privilegedRoles = ["admin", "superAdmin"];
 
 const router = Router();
+
+// POST /api/auth/users — Admin directly creates an account (e.g. a teacher), email+password, no OTP needed
+router.post("/users", authMiddleware, requireRole("admin", "superAdmin"), async (req: Request, res: Response) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "নাম, ইমেইল ও পাসওয়ার্ড আবশ্যক" });
+    }
+    if (typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ message: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে" });
+    }
+
+    const targetRole = role || "teacher";
+    if (!userRoles.includes(targetRole)) {
+      return res.status(400).json({ message: "অবৈধ রোল" });
+    }
+
+    const requesterRole = req.user!.role || "";
+    if (privilegedRoles.includes(targetRole) && requesterRole !== "superAdmin") {
+      return res.status(403).json({ message: "শুধুমাত্র সুপার অ্যাডমিন এই রোল দিতে পারবেন" });
+    }
+
+    await connectToDB();
+
+    const existing = await UserModel.findOne({ email: email.toLowerCase() });
+    if (existing) {
+      return res.status(409).json({ message: "এই ইমেইলে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const newUser = await UserModel.create({
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      role: targetRole,
+      isVerified: true,
+    });
+
+    try {
+      await sendAccountCreatedEmail(newUser.email, newUser.name, password, targetRole);
+    } catch (emailError) {
+      console.error("Account created email failed:", emailError);
+    }
+
+    const user = await UserModel.findById(newUser._id).select("-password");
+    return res.status(201).json({ message: "অ্যাকাউন্ট তৈরি করা হয়েছে", user });
+  } catch (error) {
+    console.error("Create user error:", error);
+    return res.status(500).json({ message: "সার্ভার ত্রুটি" });
+  }
+});
 
 // GET /api/auth/users — List all users (admin only)
 router.get("/users", authMiddleware, requireRole("admin", "superAdmin"), async (_req: Request, res: Response) => {

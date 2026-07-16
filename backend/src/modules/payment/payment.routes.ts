@@ -6,8 +6,9 @@ const router = Router();
 
 router.post("/init", authMiddleware, paymentController.initPayment);
 router.post("/ipn", paymentController.handleIpn);
-router.get("/success", paymentController.handleSuccess);
-router.get("/fail", paymentController.handleFail);
-router.get("/cancel", paymentController.handleCancel);
+// SSLCommerz calls success/fail/cancel URLs via POST, not GET
+router.route("/success").get(paymentController.handleSuccess).post(paymentController.handleSuccess);
+router.route("/fail").get(paymentController.handleFail).post(paymentController.handleFail);
+router.route("/cancel").get(paymentController.handleCancel).post(paymentController.handleCancel);
 
 export default router;
