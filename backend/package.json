@@ -4,7 +4,7 @@
   "description": "CMS Academy - Backend API server (Express + MongoDB)",
   "main": "dist/index.js",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -18,7 +18,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.0",
-    "firebase-admin": "^14.1.0",
+    "firebase-admin": "^12.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
     "multer": "^2.2.0",
