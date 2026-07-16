@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 import Link from "next/link";
 import api from "@/src/lib/api";
 import { useAuthStore } from "@/src/lib/store";
@@ -130,6 +131,7 @@ const initialFormData: CourseFormData = {
 
 export default function ManageCoursesPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, token } = useAuthStore();
   const { addToast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -149,7 +151,7 @@ export default function ManageCoursesPage() {
   useEffect(() => {
     if (!token) {
       addToast("লগইন প্রয়োজন", "error");
-      router.push("/login");
+      router.push(loginUrlWithRedirect(pathname));
       return;
     }
     if (user?.role === "student") {
@@ -162,7 +164,7 @@ export default function ManageCoursesPage() {
       fetchTeachers();
       fetchCategories();
     }
-  }, [token, user, router]);
+  }, [token, user, router, pathname]);
 
   const fetchCourses = async () => {
     try {

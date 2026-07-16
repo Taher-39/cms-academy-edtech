@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import api from "@/src/lib/api";
 import { useAuthStore } from "@/src/lib/store";
+import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, token, setAuth } = useAuthStore();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -21,14 +23,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!token) {
-      router.push("/login");
+      router.push(loginUrlWithRedirect(pathname));
       return;
     }
     if (user) {
       setName(user.name);
       setPhone(user.phone || "");
     }
-  }, [token, user, router]);
+  }, [token, user, router, pathname]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();

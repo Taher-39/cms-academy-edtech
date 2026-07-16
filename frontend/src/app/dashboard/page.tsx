@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import api from "@/src/lib/api";
 import { useAuthStore } from "@/src/lib/store";
 import { useToast } from "@/src/components/Toast";
+import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 interface Enrollment {
   _id: string;
@@ -26,6 +27,7 @@ interface Enrollment {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, token, logout } = useAuthStore();
   const { addToast } = useToast();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -34,7 +36,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!token) {
       addToast("লগইন প্রয়োজন", "error");
-      router.push("/login");
+      router.push(loginUrlWithRedirect(pathname));
       return;
     }
 
@@ -50,7 +52,7 @@ export default function DashboardPage() {
     };
 
     fetchEnrollments();
-  }, [token, router]);
+  }, [token, router, pathname]);
 
   if (!user) return null;
 

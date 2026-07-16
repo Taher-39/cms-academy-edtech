@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/src/lib/store";
 import { useToast } from "@/src/components/Toast";
 import { useEffect, useState } from "react";
+import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 export default function DashboardLayout({
   children,
@@ -12,6 +13,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, token, logout } = useAuthStore();
   const { addToast } = useToast();
   const [ready, setReady] = useState(false);
@@ -27,9 +29,9 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!ready) return;
     if (!token) {
-      router.push("/login");
+      router.push(loginUrlWithRedirect(pathname));
     }
-  }, [ready, token, router]);
+  }, [ready, token, router, pathname]);
 
   if (!ready || !token || !user) {
     return (

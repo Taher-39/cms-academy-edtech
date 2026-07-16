@@ -4,146 +4,171 @@
 - GitHub: **https://github.com/Taher-39/cms-academy-edtech**
 
 ## Overview
-CMS Academy is an EdTech platform (Bangla-focused) for **students in Bangladesh education tracks** and **job seekers**. It provides:
-- Structured courses (academic + job-prep)
-- **Prerecorded** lectures (with media/notes)
-- **Live classes** (with streaming link + post-class recordings)
-- A **student-only QnA** area
-- Role-based access for **Super Admin / Admin / Teacher / Student**
+CMS Academy is a Bangla-medium EdTech platform for academic students (class 6–12) and
+job-seekers (BCS/NTRCA and similar prep), built as two separate apps:
+- **`frontend/`** — Next.js (App Router) site
+- **`backend/`** — a standalone Express + MongoDB API, deployed as a Vercel serverless function
+
+Courses aren't limited to any fixed subject list — admins can add any subject/category at
+any time, so the platform can host math, ICT, science, tech, or any other course as needed.
+
+Four roles: **Student**, **Teacher**, **Admin**, **Super Admin**.
 
 ## Main Features
-### 1) Courses & Learning
-- Course catalog with course detail pages
-- Course variants (as supported by the product concept):
-  - Full course
-  - Revision course
-  - MCQ-only course
-  - Chapter-based course
-  - Free courses
-  - Paid courses with **preview/free lecture(s)**
-- Lecture content types:
-  - Video lectures (commonly via unlisted links)
-  - Lecture notes/material links (e.g., Drive links)
 
-### 2) Live Classes
-- Live course/class provides a meeting link (e.g., Google Meet)
-- After class, recordings are uploaded/attached in the app
+### 1) Courses & Learning
+- Course catalog + detail pages, with admin-managed **categories/subjects** that can be
+  added anytime (not hardcoded to a fixed subject list)
+- Course types: full course, revision, MCQ-only, chapter-based
+- Free and paid courses, with regular-price/discount-percent display
+- Course approval workflow (pending → approved/rejected) and "featured" flag, managed by admin
+- Lecture content: video (YouTube, typically unlisted) + notes (e.g. Google Drive links),
+  grouped by chapter, with free-preview lectures for non-enrolled visitors
+- Custom video player: renders its own play/pause/seek/mute/fullscreen controls instead of
+  YouTube's native player chrome, so there's no Share button or end-of-video "watch next"
+  suggestions grid on lecture/trailer videos
+- Live classes with a meeting link, plus recordings attached after the session
+
+### 2) Teacher Module
+- Only admin/superAdmin can create or edit courses — a course is created *with* a teacher
+  assigned to it, not by the teacher themselves
+- Teachers manage lectures (create/edit/delete) only for the course(s) assigned to them
+- Admin/superAdmin create teacher accounts directly (name/email/password, no OTP step) from
+  the dashboard; the new teacher gets a branded email with their login credentials
+- Self-registration always creates a **student** account — admin/teacher accounts can only
+  be created or promoted by an existing admin/superAdmin (granting admin/superAdmin itself
+  is restricted to superAdmin)
 
 ### 3) Enrollment, Access & Expiry
-- Students enroll into courses
-- Access is restricted based on enrollment and **course validity/expiry**
-  - When a course period ends, the student no longer has access to that course’s content and QnA.
+- Students enroll (free instant-enroll, or via payment for paid courses); access expires
+  based on the course's configured duration
+- **Super Admin** has default access to every course, with no enrollment record needed
+- **Admin** does *not* get blanket access — Super Admin can grant an admin free, revocable
+  access to specific courses individually (dashboard → এডমিন অ্যাক্সেস)
+- Progress tracking (lectures watched, percent complete) per enrollment
+- Coupon codes (flat or percent discount) applicable at checkout
+- Admin/superAdmin can view all enrollments and issue refunds (SSLCommerz refund API)
 
 ### 4) QnA (Student-only)
-- QnA section is available for eligible enrolled students
-- Only students can access/post in QnA for their active/eligible course(s)
+- Enrolled students can ask questions on their course; teachers/admins can answer
+- Access is gated by an active (non-expired) enrollment
 
 ### 5) Authentication & Security
-- Registration + **email OTP** using **Nodemailer**
-- Forgot password + **OTP verification**
-- Change password
+- Registration with **email OTP** verification (Nodemailer)
+- Forgot password / reset via OTP, plus authenticated change-password
 - Google login via **Firebase**
-- Token/session handling via **JWT**
+- JWT-based sessions; role-based route/endpoint guards throughout the API
 
 ### 6) Payments (Paid Courses)
-- Paid course payment via **SSLCommerz**
-- Payment lifecycle endpoints (init/success/fail/cancel/ipn)
+- SSLCommerz integration: init / success / fail / cancel / IPN callback routes
+- Coupon-aware pricing and refund flow
 
-### 7) Media & Uploads
-- Media handling via **Cloudinary**
-- Upload handling supported via **multer**
+### 7) AI Assistant & Support Widgets
+- Floating WhatsApp + AI chat assistant button (bottom-right), the assistant is backed by
+  the free-tier **Google Gemini API**, answering questions about courses/enrollment/account
+  in Bangla
+- Branded HTML emails (OTP, account-created) with phone/WhatsApp/Facebook contact footer
 
-### 8) UX
-- **Dark/Light mode** via `next-themes`
-- Public pages: **FAQ**, **Terms & Conditions**, **Contact**
+### 8) Site Content & Marketing
+- Super Admin-managed site content: homepage banners, FAQ entries, terms & conditions text
+- Footer social links (Facebook group, YouTube, LinkedIn, Instagram, X, TikTok)
+- Public **"Apply as Teacher"** page (linked from the footer) — submissions email the admin
+
+### 9) Admin/Super Admin Dashboard
+- Users: list, change role, delete
+- Courses: create/edit/delete/approve/reject/feature, assign teacher
+- Categories: add/edit/delete subjects available when creating a course
+- Coupons: create/edit/delete
+- Analytics overview (students, teachers, courses, revenue)
+- Payments/enrollments: view all, refund
+- Admin course-access grants (Super Admin only)
+- Site content editor (Super Admin only)
+
+### 10) Media & UX
+- Media uploads via **Cloudinary** (course thumbnails, avatars), handled with **multer**
+- Dark/Light mode via a custom theme provider
+- Public pages: About, FAQ, Terms & Conditions, Contact
 
 ## Tech Stack
-- **Next.js (App Router)**
-- **TypeScript**
-- **Tailwind CSS v4**
-- **MongoDB + Mongoose**
-- **JWT**
-- **Firebase** (Google login)
-- **Nodemailer** (OTP + email flows)
-- **Zod** (validation)
-- **react-hook-form** (forms)
-- **Zustand** (client state)
-- **Cloudinary** (media storage)
-- **sslcommerz-lts** (payments)
-- **multer** (uploads)
+
+**Frontend** (`frontend/`)
+- Next.js (App Router) + TypeScript
+- Tailwind CSS v4
+- Zustand (client state, persisted auth)
+- axios (API client)
+- Firebase (client-side Google sign-in)
+- Zod, react-hook-form
+
+**Backend** (`backend/`)
+- Express + TypeScript, run locally via `tsx`
+- MongoDB + Mongoose
+- JWT (`jsonwebtoken`) + `bcryptjs`
+- Zod (request validation)
+- Nodemailer (OTP + transactional emails)
+- Cloudinary (media storage) + `multer` (uploads)
+- `sslcommerz-lts` (payments)
+- Firebase Admin (Google ID token verification)
+- Google Gemini API (AI assistant, called directly via `fetch`, no SDK dependency)
+- Deployed to Vercel as a serverless function (`backend/api/index.ts` + `backend/vercel.json`)
 
 ## Codebase Structure (high-level)
 
-### `src/app/`
-- `layout.tsx` – root layout + app providers
-- `globals.css` – global styles
-- `page.tsx` – landing/home
-- `middleware.ts` – route protection / session checks
+### `frontend/src/`
+- `app/` — routes (App Router): `courses/`, `courses/[id]/`, `courses/[id]/learn/`,
+  `dashboard/` (+ role-gated subpages), `apply-teacher/`, `(auth)/`, `about/`, `contact/`,
+  `faq/`, `terms/`
+- `components/` — `Header`, `Footer`, `LayoutWrapper`, `Providers`, `ThemeProvider`,
+  `Toast`, `FloatingAssistant` (WhatsApp + AI chat), `YouTubeEmbed` (custom player),
+  `DeleteConfirmDialog`, `QnAThread`
+- `lib/` — `api.ts` (axios client), `store.ts` (Zustand), `firebase.ts`
+- `types/`, `utils/`
 
-Routes:
-- `src/app/courses/` + `src/app/courses/[id]/` – course pages
-- `src/app/dashboard/` – user dashboard
-- `src/app/faq/`, `src/app/terms/`, `src/app/contact/`
+### `backend/src/`
+- `app.ts` — the Express app (middleware + all routes), imported by both the local dev
+  entrypoint and the Vercel serverless function
+- `index.ts` — local dev bootstrap only (DNS workaround, `connectToDB`, `app.listen`)
+- `modules/` — one folder per domain, each typically with `*.routes.ts`, `*.controller.ts`,
+  `*.service.ts`, `*.validation.ts`:
+  `auth` (incl. `admin.routes.ts` for user/teacher management), `course`, `category`,
+  `enrollment`, `payment`, `qna`, `live`, `coupon`, `contact`, `settings`, `analytics`,
+  `assistant`
+- `shared/models/` — Mongoose models: `User`, `Course`, `Lecture`, `Enrollment`, `QnA`,
+  `LiveClass`, `Coupon`, `Category`, `Settings`
+- `shared/config/` — `db.ts`, `cloudinary.ts`, `nodemailer.ts`, `sslcommerz.ts`,
+  `firebaseAdmin.ts`
+- `shared/utils/` — `emailService.ts`, `emailTemplate.ts` (shared branded HTML wrapper)
+- `shared/middleware/` — `auth.middleware.ts` (`authMiddleware`, `requireRole`, `optionalAuth`)
 
-Auth-related UI/API routes are under:
-- `src/app/(auth)/`
-
-### `src/app/api/` (backend routes)
-- `src/app/api/auth/*`
-  - `register`, `login`, `google`, `forgot-password`, `verify-otp`, `reset-password`, `change-password`
-- `src/app/api/courses/*`
-  - course APIs and lecture/live/QnA related endpoints
-- `src/app/api/enroll*`
-  - enrollment + course access control
-- `src/app/api/live/*`
-  - live class endpoints and recordings
-- `src/app/api/qna/*`
-  - QnA questions and answers
-- `src/app/api/payment/*`
-  - init/success/fail/cancel + ipn
-- `src/app/api/contact/`
-  - contact form handling
-
-### `src/components/`
-Reusable UI components:
-- `Header`, `Footer`
-- `CourseCard`
-- `ThemeToggle`
-- `Providers`
-
-### `src/models/`
-Mongoose models:
-- `User`, `Course`, `Enrollment`, `Lecture`, `LiveClass`, `QnA`
-
-### `src/lib/`
-Integrations/utilities:
-- `db.ts` (MongoDB connection)
-- `firebase.ts`
-- `jwt.ts`
-- `otp.ts`
-- `store.ts` (Zustand setup)
-- `api.ts` (API helper)
-
-### `src/utils/` and `src/config/`
-- `utils/emailService.ts` – Nodemailer mail helper
-- `config/cloudinary.ts`, `config/nodemailer.ts`, `config/sslcommerz.ts`
+### `backend/api/`
+- `index.ts` — Vercel serverless entrypoint (re-exports the Express app from `src/app.ts`)
 
 ## Local Development
-1. Install dependencies:
+
+This is two separate apps — run each from its own directory.
+
+**Backend**
 ```bash
+cd backend
 npm install
+cp .env.example .env   # fill in MongoDB/JWT/Nodemailer/Cloudinary/SSLCommerz/Firebase/Gemini values
+npm run dev            # http://localhost:4000
 ```
 
-2. Add environment variables (Firebase, MongoDB, Nodemailer/OTP, Cloudinary, SSLCommerz, JWT secrets, etc.).
-
-3. Run the app:
+**Frontend**
 ```bash
-npm run dev
+cd frontend
+npm install
+cp .env.example .env.local   # fill in NEXT_PUBLIC_API_URL + Firebase client values
+npm run dev                  # http://localhost:3000
 ```
-
-4. Open:
-- http://localhost:3000
 
 ## Deployment
-- Designed for deployment on **Vercel** (Next.js).
 
+Deployed as **two separate Vercel projects** (not a single Next.js app):
+- One project with Root Directory `backend`, using `backend/vercel.json`'s rewrite so every
+  path is served by the single serverless function at `backend/api/index.ts`
+- One project with Root Directory `frontend` (standard Next.js zero-config deploy)
+
+Env vars are set per-project in the Vercel dashboard, matching each app's `.env.example`.
+The backend's `FRONTEND_URL` and the frontend's `NEXT_PUBLIC_API_URL` must point at each
+other's deployed URLs.

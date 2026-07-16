@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import api from "@/src/lib/api";
 import { useAuthStore } from "@/src/lib/store";
 import { useToast } from "@/src/components/Toast";
 import QnAThread from "@/src/components/QnAThread";
+import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 interface QnAItem {
   _id: string;
@@ -33,6 +34,7 @@ export default function QnAPage() {
 // ============ Student View ============
 function StudentQnAView() {
   const router = useRouter();
+  const pathname = usePathname();
   const { token } = useAuthStore();
   const { addToast } = useToast();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -40,7 +42,7 @@ function StudentQnAView() {
 
   useEffect(() => {
     if (!token) {
-      router.push("/login");
+      router.push(loginUrlWithRedirect(pathname));
       return;
     }
     (async () => {
@@ -53,7 +55,7 @@ function StudentQnAView() {
         setLoading(false);
       }
     })();
-  }, [token, router]);
+  }, [token, router, pathname]);
 
   if (loading) {
     return (

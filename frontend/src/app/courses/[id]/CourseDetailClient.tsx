@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import api from "@/src/lib/api";
 import { useAuthStore } from "@/src/lib/store";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { useToast } from "@/src/components/Toast";
 import YouTubeEmbed from "@/src/components/YouTubeEmbed";
 import QnAThread from "@/src/components/QnAThread";
 import FaqAccordion from "@/src/components/FaqAccordion";
+import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 interface ClassScheduleItem {
   day: string;
@@ -190,6 +191,7 @@ export default function CourseDetailClient({
   liveClasses,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, token } = useAuthStore();
   const { addToast } = useToast();
@@ -272,7 +274,7 @@ export default function CourseDetailClient({
 
   const handleEnroll = async () => {
     if (!user) {
-      router.push("/login");
+      router.push(loginUrlWithRedirect(pathname));
       return;
     }
 

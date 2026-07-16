@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import api from "@/src/lib/api";
 import { useAuthStore } from "@/src/lib/store";
 import { useToast } from "@/src/components/Toast";
 import YouTubeEmbed from "@/src/components/YouTubeEmbed";
 import QnAThread from "@/src/components/QnAThread";
+import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 interface CourseData {
   _id: string;
@@ -53,6 +54,7 @@ function groupLecturesByChapter(lectures: LectureData[]): ChapterGroup[] {
 
 export default function LearnClient({ course, lectures: initialLectures }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, token } = useAuthStore();
   const { addToast } = useToast();
   const [lectures, setLectures] = useState(initialLectures);
@@ -177,7 +179,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
         <p className="text-zinc-500 mb-4">এই কোর্স দেখতে লগইন করুন</p>
         <button
-          onClick={() => router.push("/login")}
+          onClick={() => router.push(loginUrlWithRedirect(pathname))}
           className="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg font-medium transition"
         >
           লগইন করুন

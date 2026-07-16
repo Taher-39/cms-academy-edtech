@@ -1,22 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/src/lib/api";
 import { useAuthStore } from "@/src/lib/store";
 import { getFirebaseAuth, getGoogleProvider } from "@/src/lib/firebase";
 import { signInWithPopup } from "firebase/auth";
 import { useToast } from "@/src/components/Toast";
+import { safeRedirectPath } from "@/src/lib/authRedirect";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
   const { addToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +31,7 @@ export default function LoginPage() {
       const res = await api.post("/api/auth/login", { email, password });
       setAuth(res.data.user, res.data.token);
       addToast("লগইন সফল! স্বাগতম।", "success");
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
@@ -54,7 +58,7 @@ export default function LoginPage() {
 
       setAuth(res.data.user, res.data.token);
       addToast("Google লগইন সফল!", "success");
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
@@ -151,5 +155,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-4rem)]" />}>
+      <LoginForm />
+    </Suspense>
   );
 }
