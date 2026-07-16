@@ -256,6 +256,12 @@ function AdminPaymentsView() {
           <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
             💳 লেনদেন
           </h1>
+          <Link
+            href="/dashboard/payments/manual"
+            className="text-xs text-blue-600 hover:underline mt-1 inline-block"
+          >
+            💰 ম্যানুয়াল পেমেন্ট ভেরিফিকেশন →
+          </Link>
         </div>
         <select
           value={statusFilter}

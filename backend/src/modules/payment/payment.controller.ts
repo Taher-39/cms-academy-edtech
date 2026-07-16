@@ -46,13 +46,21 @@ export async function handleSuccess(req: Request, res: Response) {
 }
 
 export async function handleFail(req: Request, res: Response) {
-  const courseId = req.query.courseId;
+  const { courseId, type } = req.query;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  return res.redirect(`${frontendUrl}/courses/${courseId || ""}?payment=failed`);
+  const redirect =
+    type === "session"
+      ? `${frontendUrl}/dashboard/sessions?payment=failed`
+      : `${frontendUrl}/courses/${courseId || ""}?payment=failed`;
+  return res.redirect(redirect);
 }
 
 export async function handleCancel(req: Request, res: Response) {
-  const courseId = req.query.courseId;
+  const { courseId, type } = req.query;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  return res.redirect(`${frontendUrl}/courses/${courseId || ""}?payment=cancelled`);
+  const redirect =
+    type === "session"
+      ? `${frontendUrl}/dashboard/sessions?payment=cancelled`
+      : `${frontendUrl}/courses/${courseId || ""}?payment=cancelled`;
+  return res.redirect(redirect);
 }

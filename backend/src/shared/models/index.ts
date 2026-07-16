@@ -7,3 +7,7 @@ export * from "./LiveClass";
 export * from "./Coupon";
 export * from "./Settings";
 export * from "./Category";
+export * from "./QuizQuestion";
+export * from "./QuizAttempt";
+export * from "./OneToOneSession";
+export * from "./ManualPayment";

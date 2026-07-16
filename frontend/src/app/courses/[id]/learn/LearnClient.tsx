@@ -8,6 +8,7 @@ import { useAuthStore } from "@/src/lib/store";
 import { useToast } from "@/src/components/Toast";
 import YouTubeEmbed from "@/src/components/YouTubeEmbed";
 import QnAThread from "@/src/components/QnAThread";
+import QuizTest from "@/src/components/QuizTest";
 import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 interface CourseData {
@@ -62,7 +63,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
   const [isExpired, setIsExpired] = useState(false);
   const [checked, setChecked] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [tab, setTab] = useState<"video" | "qna">("video");
+  const [tab, setTab] = useState<"video" | "qna" | "quiz">("video");
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [marking, setMarking] = useState(false);
   const [openChapters, setOpenChapters] = useState<Set<string>>(() => {
@@ -343,6 +344,16 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
                 >
                   💬 প্রশ্ন-উত্তর
                 </button>
+                <button
+                  onClick={() => setTab("quiz")}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+                    tab === "quiz"
+                      ? "border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100"
+                      : "border-transparent text-zinc-500"
+                  }`}
+                >
+                  📝 MCQ টেস্ট
+                </button>
               </div>
 
               {tab === "video" ? (
@@ -427,7 +438,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : tab === "qna" ? (
                 <div>
                   {isEnrolled && !isExpired ? (
                     <QnAThread courseId={course._id} />
@@ -436,6 +447,18 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
                       {isExpired
                         ? "কোর্সের মেয়াদ শেষ হয়ে যাওয়ায় প্রশ্ন-উত্তর সুবিধা বন্ধ"
                         : "প্রশ্ন করতে এই কোর্সে এনরোল করুন"}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {isEnrolled && !isExpired ? (
+                    <QuizTest courseId={course._id} />
+                  ) : (
+                    <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-500 text-sm">
+                      {isExpired
+                        ? "কোর্সের মেয়াদ শেষ হয়ে যাওয়ায় MCQ টেস্ট সুবিধা বন্ধ"
+                        : "MCQ টেস্ট দিতে এই কোর্সে এনরোল করুন"}
                     </div>
                   )}
                 </div>

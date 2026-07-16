@@ -20,16 +20,43 @@ interface Props {
  * - https://youtube.com/watch?v=VIDEO_ID
  * - https://youtu.be/VIDEO_ID
  * - https://www.youtube.com/embed/VIDEO_ID
+ * - https://www.youtube.com/shorts/VIDEO_ID
+ * - https://www.youtube.com/live/VIDEO_ID
  */
 function getYoutubeVideoId(url: string): string | null {
+  if (!url) return null;
+
+  // Try to extract ID from various YouTube URL formats
   const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    // Standard watch URLs (with v= param anywhere)
+    /(?:youtube\.com\/watch\?.*[&?]v=|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    // Short URLs: youtu.be/
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    // Embed URLs: youtube.com/embed/
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    // Shorts: youtube.com/shorts/
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    // Live: youtube.com/live/
+    /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
+    // Mobile: m.youtube.com
+    /m\.youtube\.com\/watch\?.*[&?]v=([a-zA-Z0-9_-]{11})/,
+    // Plain video ID (11 chars)
     /^([a-zA-Z0-9_-]{11})$/,
   ];
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match) return match[1];
   }
+
+  // Try URL constructor fallback
+  try {
+    const parsed = new URL(url);
+    const v = parsed.searchParams.get("v");
+    if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+  } catch {
+    // Not a valid URL, ignore
+  }
+
   return null;
 }
 

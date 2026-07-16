@@ -2,7 +2,7 @@
   "name": "cms-academy-backend",
   "version": "1.0.0",
   "description": "CMS Academy - Backend API server (Express + MongoDB)",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "engines": {
     "node": "24.x"
   },
@@ -10,7 +10,7 @@
     "dev": "tsx watch src/index.ts",
     "dev:nodemon": "nodemon --exec tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/src/index.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

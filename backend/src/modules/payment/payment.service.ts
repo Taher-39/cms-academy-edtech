@@ -2,8 +2,11 @@ import { connectToDB } from "../../shared/lib/db";
 import { CourseModel } from "../../shared/models/Course";
 import { EnrollmentModel } from "../../shared/models/Enrollment";
 import { UserModel } from "../../shared/models/User";
+import { OneToOneSessionModel } from "../../shared/models/OneToOneSession";
 import { sslcommerz, getSslcommerzInitData } from "../../shared/config/sslcommerz";
 import { validateAndComputeCouponDiscount, incrementCouponUsage } from "../coupon/coupon.service";
+
+export const SESSION_PRICE_PER_HOUR = 200;
 
 export async function initPayment(
   userId: string,
@@ -79,6 +82,7 @@ export async function initPayment(
     const trxKey = `trx_${tran_id}`;
     if (!global.__trxStore) global.__trxStore = new Map();
     global.__trxStore.set(trxKey, {
+      type: "course",
       userId,
       courseId,
       amount: finalAmount,
@@ -91,6 +95,91 @@ export async function initPayment(
   }
 
   throw { status: 500, message: "পেমেন্ট ইনিশিয়ালাইজেশন ব্যর্থ" };
+}
+
+export async function initSessionPayment(
+  userId: string,
+  email: string,
+  data: {
+    teacherId: string;
+    subject: string;
+    topics: string;
+    requestedSchedule: string;
+    durationHours: number;
+  }
+) {
+  await connectToDB();
+
+  const teacher = await UserModel.findById(data.teacherId).select("role name");
+  if (!teacher || teacher.role !== "teacher") {
+    throw { status: 400, message: "নির্বাচিত শিক্ষক পাওয়া যায়নি" };
+  }
+
+  const schedule = new Date(data.requestedSchedule);
+  if (isNaN(schedule.getTime()) || schedule.getTime() <= Date.now()) {
+    throw { status: 400, message: "সময়সূচী সঠিক নয় — ভবিষ্যতের একটি সময় দিন" };
+  }
+
+  const amount = SESSION_PRICE_PER_HOUR * data.durationHours;
+  const tran_id = `CMS-SESSION-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 4000}`;
+
+  const initData = getSslcommerzInitData({
+    total_amount: amount,
+    tran_id,
+    success_url: `${backendUrl}/api/payment/success?tran_id=${tran_id}&type=session`,
+    fail_url: `${backendUrl}/api/payment/fail?type=session`,
+    cancel_url: `${backendUrl}/api/payment/cancel?type=session`,
+    cus_name: email || "Student",
+    cus_email: email || "student@example.com",
+    product_name: `১-এক-১ সেশন — ${data.subject}`,
+  });
+
+  const response = await sslcommerz.init(initData);
+
+  if (response.status === "SUCCESS" || response.GatewayPageURL) {
+    const trxKey = `trx_${tran_id}`;
+    if (!global.__trxStore) global.__trxStore = new Map();
+    global.__trxStore.set(trxKey, {
+      type: "session",
+      userId,
+      amount,
+      discount: 0,
+      tran_id,
+      teacherId: data.teacherId,
+      subject: data.subject,
+      topics: data.topics,
+      requestedSchedule: data.requestedSchedule,
+      durationHours: data.durationHours,
+      pricePerHour: SESSION_PRICE_PER_HOUR,
+    });
+
+    return { url: response.GatewayPageURL, tran_id };
+  }
+
+  throw { status: 500, message: "পেমেন্ট ইনিশিয়ালাইজেশন ব্যর্থ" };
+}
+
+type TrxData = NonNullable<ReturnType<typeof global.__trxStore.get>>;
+
+async function createSessionFromTrxData(trxData: TrxData, valId?: string, bankTranId?: string) {
+  const existing = await OneToOneSessionModel.findOne({ transactionId: trxData.tran_id });
+  if (existing) return existing;
+
+  return OneToOneSessionModel.create({
+    student: trxData.userId,
+    teacher: trxData.teacherId,
+    subject: trxData.subject,
+    topics: trxData.topics,
+    requestedSchedule: new Date(trxData.requestedSchedule!),
+    durationHours: trxData.durationHours,
+    pricePerHour: trxData.pricePerHour,
+    amount: trxData.amount,
+    status: "awaiting_teacher",
+    transactionId: trxData.tran_id,
+    valId,
+    bankTransactionId: bankTranId,
+  });
 }
 
 export async function handleIpn(body: any) {
@@ -108,6 +197,12 @@ export async function handleIpn(body: any) {
   }
 
   await connectToDB();
+
+  if (trxData.type === "session") {
+    await createSessionFromTrxData(trxData, body.val_id, body.bank_tran_id);
+    global.__trxStore?.delete(trxKey);
+    return { message: "IPN processed successfully" };
+  }
 
   const existing = await EnrollmentModel.findOne({
     student: trxData.userId,
@@ -145,11 +240,12 @@ export async function handleIpn(body: any) {
 }
 
 export async function handlePaymentSuccess(query: any) {
-  const { tran_id, courseId, discount, val_id, bank_tran_id } = query;
+  const { tran_id, courseId, type: queryType, discount, val_id, bank_tran_id } = query;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const isSessionFlow = queryType === "session";
 
-  if (!tran_id || !courseId) {
-    return { redirect: `${frontendUrl}/payment/failed` };
+  if (!tran_id) {
+    return { redirect: `${frontendUrl}/dashboard?payment=failed` };
   }
 
   let isValid = false;
@@ -164,20 +260,34 @@ export async function handlePaymentSuccess(query: any) {
   const trxData = global.__trxStore?.get(trxKey);
 
   if (!trxData && !isValid) {
-    return { redirect: `${frontendUrl}/payment/failed` };
+    return {
+      redirect: isSessionFlow
+        ? `${frontendUrl}/dashboard/sessions?payment=failed`
+        : `${frontendUrl}/courses/${courseId || ""}?payment=failed`,
+    };
+  }
+
+  if (trxData?.type === "session" || (!trxData && isSessionFlow)) {
+    if (trxData) {
+      await connectToDB();
+      await createSessionFromTrxData(trxData, val_id, bank_tran_id);
+      global.__trxStore?.delete(trxKey);
+    }
+    return { redirect: `${frontendUrl}/dashboard/sessions?payment=success` };
   }
 
   const userId = trxData?.userId;
   const paidAmount = trxData?.amount || 0;
+  const targetCourseId = courseId || trxData?.courseId;
 
-  if (userId) {
+  if (userId && targetCourseId) {
     await connectToDB();
 
-    const existing = await EnrollmentModel.findOne({ student: userId, course: courseId });
+    const existing = await EnrollmentModel.findOne({ student: userId, course: targetCourseId });
     if (!existing) {
       await EnrollmentModel.create({
         student: userId,
-        course: courseId,
+        course: targetCourseId,
         paidAmount,
         discountApplied: parseInt((discount as string) || "0"),
         transactionId: tran_id,
@@ -187,12 +297,12 @@ export async function handlePaymentSuccess(query: any) {
         paymentStatus: "paid",
       });
 
-      await CourseModel.findByIdAndUpdate(courseId, {
+      await CourseModel.findByIdAndUpdate(targetCourseId, {
         $addToSet: { enrolledStudents: userId },
       });
 
       await UserModel.findByIdAndUpdate(userId, {
-        $addToSet: { enrolledCourses: courseId },
+        $addToSet: { enrolledCourses: targetCourseId },
       });
 
       if (trxData?.couponCode) {
@@ -203,5 +313,5 @@ export async function handlePaymentSuccess(query: any) {
     global.__trxStore?.delete(trxKey);
   }
 
-  return { redirect: `${frontendUrl}/courses/${courseId}?payment=success` };
+  return { redirect: `${frontendUrl}/courses/${targetCourseId || ""}?payment=success` };
 }

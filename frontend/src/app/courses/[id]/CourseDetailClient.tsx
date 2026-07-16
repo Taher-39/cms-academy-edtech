@@ -309,27 +309,8 @@ export default function CourseDetailClient({
         setLoading(false);
       }
     } else {
-      // Paid course - redirect to payment
-      setLoading(true);
-      try {
-        const res = await api.post("/api/payment/init", {
-          courseId: course._id,
-          couponCode: couponCode.trim() || undefined,
-        });
-        if (res.data.url) {
-          window.location.href = res.data.url;
-        } else {
-          addToast("পেমেন্ট গেটওয়ে URL পাওয়া যায়নি", "error");
-        }
-      } catch (err: unknown) {
-        const msg =
-          (err as { response?: { data?: { message?: string } } })?.response
-            ?.data?.message || "পেমেন্ট ইনিশিয়ালাইজেশন ব্যর্থ";
-        setPaymentMsg(msg);
-        addToast(msg, "error");
-      } finally {
-        setLoading(false);
-      }
+      // Paid course - redirect to checkout page
+      router.push(`/courses/${course._id}/checkout`);
     }
   };
 

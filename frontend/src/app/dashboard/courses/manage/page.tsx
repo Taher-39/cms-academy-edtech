@@ -1103,6 +1103,12 @@ export default function ManageCoursesPage() {
                 >
                   লেকচার
                 </Link>
+                <Link
+                  href={`/dashboard/quiz/manage?courseId=${course._id}`}
+                  className="px-3 py-1.5 text-xs bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/60 transition"
+                >
+                  MCQ
+                </Link>
                 {isAdminViewer && course.status !== "approved" && (
                   <button
                     onClick={() => handleStatusChange(course._id, "approved")}

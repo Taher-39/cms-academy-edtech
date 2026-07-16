@@ -15,12 +15,21 @@ declare global {
   var __trxStore: Map<
     string,
     {
+      type: "course" | "session";
       userId: string;
-      courseId: string;
       amount: number;
       discount: number;
       tran_id: string;
       couponCode?: string;
+      // course purchases
+      courseId?: string;
+      // one-to-one session bookings
+      teacherId?: string;
+      subject?: string;
+      topics?: string;
+      requestedSchedule?: string;
+      durationHours?: number;
+      pricePerHour?: number;
     }
   >;
 }
