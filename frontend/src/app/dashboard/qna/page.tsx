@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import api from "@/src/lib/api";
@@ -14,7 +14,8 @@ interface QnAItem {
   course: { _id: string; title: string };
   student: { _id: string; name: string; email: string };
   question: string;
-  answers: { _id?: string; reply: string; teacher?: { name: string }; date: string }[];
+  images?: string[];
+  answers: { _id?: string; reply: string; images?: string[]; teacher?: { name: string }; date: string }[];
   createdAt: string;
 }
 
@@ -134,6 +135,20 @@ function TeacherAdminQnAView() {
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [replying, setReplying] = useState<Record<string, boolean>>({});
 
+  // Images per reply
+  const [replyImages, setReplyImages] = useState<Record<string, File[]>>({});
+  const [replyPreviews, setReplyPreviews] = useState<Record<string, string[]>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  async function uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api.post("/api/qna/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data.url;
+  }
+
   useEffect(() => {
     if (
       !token ||
@@ -179,9 +194,18 @@ function TeacherAdminQnAView() {
 
     setReplying((prev) => ({ ...prev, [qnaId]: true }));
     try {
-      await api.post(`/api/qna/${qnaId}/answer`, { reply });
+      // Upload images first
+      let imageUrls: string[] = [];
+      const imgs = replyImages[qnaId] || [];
+      if (imgs.length > 0) {
+        imageUrls = await Promise.all(imgs.map((f) => uploadImage(f)));
+      }
+
+      await api.post(`/api/qna/${qnaId}/answer`, { reply, images: imageUrls });
       addToast("উত্তর দেওয়া হয়েছে!", "success");
       setReplyText((prev) => ({ ...prev, [qnaId]: "" }));
+      setReplyImages((prev) => ({ ...prev, [qnaId]: [] }));
+      setReplyPreviews((prev) => ({ ...prev, [qnaId]: [] }));
       fetchQnas();
     } catch (err: unknown) {
       const msg =
@@ -234,7 +258,7 @@ function TeacherAdminQnAView() {
                 <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-900/40 flex items-center justify-center text-sm font-medium text-zinc-900 dark:text-zinc-400 flex-shrink-0">
                   {qna.student?.name?.charAt(0) || "?"}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500">
                       {qna.course?.title || "Unknown"}
@@ -243,9 +267,23 @@ function TeacherAdminQnAView() {
                       {new Date(qna.createdAt).toLocaleDateString("bn-BD")}
                     </span>
                   </div>
-                  <p className="font-medium text-zinc-800 dark:text-zinc-100">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-100 break-words">
                     {qna.question}
                   </p>
+                  {/* Question Images */}
+                  {qna.images && qna.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {qna.images.map((img, i) => (
+                        <a key={i} href={img} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={img}
+                            alt="Q"
+                            className="w-20 h-20 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700 hover:opacity-80 transition"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-xs text-zinc-400 mt-1">
                     — {qna.student?.name || "ছাত্র"}
                   </p>
@@ -257,7 +295,21 @@ function TeacherAdminQnAView() {
                 <div className="ml-12 mb-4 space-y-3 pl-4 border-l-2 border-zinc-300 dark:border-blue-800">
                   {qna.answers.map((a, i) => (
                     <div key={i} className="text-sm">
-                      <p className="text-zinc-600 dark:text-zinc-400">{a.reply}</p>
+                      <p className="text-zinc-600 dark:text-zinc-400 break-words">{a.reply}</p>
+                      {/* Answer Images */}
+                      {a.images && a.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {a.images.map((img, j) => (
+                            <a key={j} href={img} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={img}
+                                alt="A"
+                                className="w-20 h-20 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700 hover:opacity-80 transition"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-xs text-zinc-400 mt-1">
                         — {a.teacher?.name || "শিক্ষক"} ·{" "}
                         {new Date(a.date).toLocaleDateString("bn-BD")}
@@ -268,23 +320,94 @@ function TeacherAdminQnAView() {
               )}
 
               {/* Reply Form */}
-              <div className="ml-12 flex gap-2">
-                <input
-                  type="text"
-                  value={replyText[qna._id] || ""}
-                  onChange={(e) =>
-                    setReplyText((prev) => ({ ...prev, [qna._id]: e.target.value }))
-                  }
-                  placeholder="উত্তর লিখুন..."
-                  className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none text-sm"
-                />
-                <button
-                  onClick={() => handleReply(qna._id)}
-                  disabled={replying[qna._id] || !replyText[qna._id]?.trim()}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-900 disabled:bg-zinc-500 text-white rounded-lg text-sm transition"
-                >
-                  {replying[qna._id] ? "..." : "উত্তর"}
-                </button>
+              <div className="ml-12 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={replyText[qna._id] || ""}
+                    onChange={(e) =>
+                      setReplyText((prev) => ({ ...prev, [qna._id]: e.target.value }))
+                    }
+                    placeholder="উত্তর লিখুন..."
+                    className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none text-sm"
+                  />
+                  <button
+                    onClick={() => handleReply(qna._id)}
+                    disabled={replying[qna._id] || !replyText[qna._id]?.trim()}
+                    className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-500 text-white rounded-lg text-sm transition"
+                  >
+                    {replying[qna._id] ? "..." : "উত্তর"}
+                  </button>
+                </div>
+
+                {/* Teacher Image Previews */}
+                {(replyPreviews[qna._id] || []).length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {(replyPreviews[qna._id] || []).map((preview, i) => (
+                      <div key={i} className="relative">
+                        <img
+                          src={preview}
+                          alt="Preview"
+                          className="w-14 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyImages((prev) => ({
+                              ...prev,
+                              [qna._id]: (prev[qna._id] || []).filter((_, j) => j !== i),
+                            }));
+                            setReplyPreviews((prev) => ({
+                              ...prev,
+                              [qna._id]: (prev[qna._id] || []).filter((_, j) => j !== i),
+                            }));
+                          }}
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Teacher Image Upload */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []).filter(
+                        (f) => f.type.startsWith("image/") && f.size <= 5 * 1024 * 1024
+                      );
+                      setReplyImages((prev) => ({
+                        ...prev,
+                        [qna._id]: [...(prev[qna._id] || []), ...files],
+                      }));
+                      setReplyPreviews((prev) => ({
+                        ...prev,
+                        [qna._id]: [
+                          ...(prev[qna._id] || []),
+                          ...files.map((f) => URL.createObjectURL(f)),
+                        ],
+                      }));
+                      if (e.target) e.target.value = "";
+                    }}
+                    className="hidden"
+                    id={`reply-upload-${qna._id}`}
+                    ref={(el) => { fileInputRefs.current[qna._id] = el; }}
+                  />
+                  <label
+                    htmlFor={`reply-upload-${qna._id}`}
+                    className="cursor-pointer inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    ছবি
+                  </label>
+                </div>
               </div>
             </div>
           ))}

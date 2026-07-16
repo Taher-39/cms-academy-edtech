@@ -117,6 +117,51 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* One-to-One Session Section */}
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <div className="relative overflow-hidden p-8 md:p-10 rounded-xl bg-gradient-to-br from-indigo-950 via-[#2C4870] to-indigo-900 text-white">
+          <div className="absolute -top-10 -right-10 w-56 h-56 bg-[#C89B3C]/20 rounded-full blur-3xl" />
+          <div className="relative flex flex-col lg:flex-row items-start lg:items-center gap-10">
+            <div className="flex-1">
+              <span className="inline-block px-3 py-1 mb-4 rounded-full bg-[#C89B3C]/20 border border-[#C89B3C]/40 text-[#E0B94E] text-xs font-semibold">
+                🧑‍🏫 ওয়ান-টু-ওয়ান সেশন
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+                পছন্দের শিক্ষকের সাথে সরাসরি ১:১ ক্লাস
+              </h2>
+              <p className="text-zinc-200 mb-6 max-w-xl leading-relaxed">
+                কোনো টপিক বা অধ্যায়ে আটকে গেছেন? আপনার পছন্দের শিক্ষক নির্বাচন করে,
+                সময়সূচী ঠিক করে সরাসরি ভিডিও কলে ব্যক্তিগত সেশন বুক করুন। প্রতিটি
+                সমস্যার সমাধান হবে একদম নিজের গতিতে, নিজের প্রয়োজন অনুযায়ী।
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4 mb-8">
+                {[
+                  { icon: "🎯", text: "নিজের পছন্দের টপিক/অধ্যায় বেছে নিন" },
+                  { icon: "🗓️", text: "সুবিধাজনক সময়ে শিডিউল করুন" },
+                  { icon: "🎥", text: "লাইভ ভিডিও কলে সরাসরি সমাধান" },
+                ].map((f, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <span className="text-xl">{f.icon}</span>
+                    <p className="text-sm text-zinc-200 leading-snug">{f.text}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <Link
+                  href="/dashboard/sessions/book"
+                  className="inline-flex items-center gap-2 px-8 py-3 bg-[#C89B3C] hover:bg-[#b98a2e] text-white rounded-lg font-semibold transition"
+                >
+                  সেশন বুক করুন
+                </Link>
+                <p className="text-sm text-zinc-300">
+                  মাত্র <span className="font-bold text-[#E0B94E]">৳২০০ / ঘণ্টা</span> থেকে শুরু
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

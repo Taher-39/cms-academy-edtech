@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as sessionService from "./session.service";
-import { initSessionSchema, acceptSessionSchema, declineSessionSchema } from "./session.validation";
+import { initSessionSchema, manualSessionSchema, acceptSessionSchema, declineSessionSchema } from "./session.validation";
 
 function handleError(res: Response, error: any, fallback = "সার্ভার ত্রুটি") {
   if (error?.status) return res.status(error.status).json({ message: error.message });
@@ -23,8 +23,29 @@ export async function initBooking(req: Request, res: Response) {
     if (!parsed.success) {
       return res.status(400).json({ message: parsed.error.issues.map((e) => e.message).join(", ") });
     }
-    const result = await sessionService.initBooking(req.user!.userId, req.user!.email || "", parsed.data);
+    const result = await sessionService.initBooking(req.user!.userId, req.user!.email || "", {
+      teacherId: parsed.data.teacherId,
+      subject: parsed.data.subject,
+      chapter: parsed.data.chapter,
+      series: parsed.data.series,
+      topics: parsed.data.topics,
+      requestedSchedule: parsed.data.requestedSchedule,
+      durationHours: parsed.data.durationHours,
+    });
     return res.status(200).json(result);
+  } catch (error: any) {
+    return handleError(res, error);
+  }
+}
+
+export async function manualInitBooking(req: Request, res: Response) {
+  try {
+    const parsed = manualSessionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.issues.map((e) => e.message).join(", ") });
+    }
+    const result = await sessionService.manualInitBooking(req.user!.userId, parsed.data);
+    return res.status(201).json(result);
   } catch (error: any) {
     return handleError(res, error);
   }

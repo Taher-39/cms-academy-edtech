@@ -103,6 +103,8 @@ export async function initSessionPayment(
   data: {
     teacherId: string;
     subject: string;
+    chapter?: string;
+    series?: string;
     topics: string;
     requestedSchedule: string;
     durationHours: number;
@@ -148,6 +150,8 @@ export async function initSessionPayment(
       tran_id,
       teacherId: data.teacherId,
       subject: data.subject,
+      chapter: data.chapter || "",
+      series: data.series || "",
       topics: data.topics,
       requestedSchedule: data.requestedSchedule,
       durationHours: data.durationHours,
@@ -170,6 +174,8 @@ async function createSessionFromTrxData(trxData: TrxData, valId?: string, bankTr
     student: trxData.userId,
     teacher: trxData.teacherId,
     subject: trxData.subject,
+    chapter: trxData.chapter || "",
+    series: trxData.series || "",
     topics: trxData.topics,
     requestedSchedule: new Date(trxData.requestedSchedule!),
     durationHours: trxData.durationHours,
@@ -179,6 +185,8 @@ async function createSessionFromTrxData(trxData: TrxData, valId?: string, bankTr
     transactionId: trxData.tran_id,
     valId,
     bankTransactionId: bankTranId,
+    paymentMethod: "sslcommerz",
+    paymentStatus: "paid",
   });
 }
 

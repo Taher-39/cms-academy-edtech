@@ -20,6 +20,8 @@ interface SessionItem {
   student: SessionPerson;
   teacher: SessionPerson;
   subject: string;
+  chapter?: string;
+  series?: string;
   topics: string;
   requestedSchedule: string;
   durationHours: number;
@@ -28,6 +30,9 @@ interface SessionItem {
   status: "awaiting_teacher" | "accepted" | "declined" | "cancelled" | "completed";
   meetLink?: string;
   teacherNote?: string;
+  paymentMethod?: string;
+  phoneNumber?: string;
+  paymentStatus?: string;
   createdAt: string;
 }
 
@@ -258,6 +263,11 @@ function SessionsContent() {
                         <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
                           {s.student?.name} · {s.subject}
                         </p>
+                        {(s.chapter || s.series) && (
+                          <p className="text-xs text-zinc-400 mt-0.5">
+                            {s.chapter && `📖 ${s.chapter}`}{s.chapter && s.series && " · "}{s.series && `📺 ${s.series}`}
+                          </p>
+                        )}
                         <p className="text-xs text-zinc-500 mt-1">{s.topics}</p>
                         <p className="text-xs text-zinc-500 mt-1">
                           🕒 {fmtSchedule(s.requestedSchedule)} · {s.durationHours} ঘণ্টা · ৳{s.amount}
@@ -363,6 +373,11 @@ function SessionsContent() {
                         <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
                           {other?.name} · {s.subject}
                         </p>
+                        {(s.chapter || s.series) && (
+                          <p className="text-xs text-zinc-400 mt-0.5">
+                            {s.chapter && `📖 ${s.chapter}`}{s.chapter && s.series && " · "}{s.series && `📺 ${s.series}`}
+                          </p>
+                        )}
                         <p className="text-xs text-zinc-500 mt-1">{s.topics}</p>
                         <p className="text-xs text-zinc-500 mt-1">
                           🕒 {fmtSchedule(s.requestedSchedule)} · {s.durationHours} ঘণ্টা · ৳{s.amount}

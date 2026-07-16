@@ -383,12 +383,7 @@ export async function listQnA(courseId: string, userId: string, role: string) {
     throw { status: 403, message: "শুধুমাত্র এনরোল্ড শিক্ষার্থী Q&A দেখতে পারেন", qna: [] };
   }
 
-  const filter: Record<string, unknown> = { course: courseId };
-  if (role !== "admin" && role !== "superAdmin" && role !== "teacher") {
-    filter.student = userId;
-  }
-
-  const qna = await QnAModel.find(filter)
+  const qna = await QnAModel.find({ course: courseId })
     .populate("student", "name email")
     .populate("answers.teacher", "name email")
     .sort({ createdAt: -1 })
@@ -397,7 +392,7 @@ export async function listQnA(courseId: string, userId: string, role: string) {
   return { qna };
 }
 
-export async function askQuestion(courseId: string, userId: string, question: string) {
+export async function askQuestion(courseId: string, userId: string, question: string, images?: string[]) {
   await connectToDB();
 
   const isEnrolled = await EnrollmentModel.findOne({
@@ -414,6 +409,7 @@ export async function askQuestion(courseId: string, userId: string, question: st
     course: courseId,
     student: userId,
     question,
+    images: images || [],
   });
 
   return { message: "প্রশ্ন জমা দেওয়া হয়েছে", qna };

@@ -1,5 +1,6 @@
 import { connectToDB } from "../../shared/lib/db";
 import { CourseModel } from "../../shared/models/Course";
+import { UserModel } from "../../shared/models/User";
 import { OneToOneSessionModel } from "../../shared/models/OneToOneSession";
 import * as paymentService from "../payment/payment.service";
 
@@ -43,12 +44,69 @@ export async function initBooking(
   data: {
     teacherId: string;
     subject: string;
+    chapter?: string;
+    series?: string;
     topics: string;
     requestedSchedule: string;
     durationHours: number;
   }
 ) {
   return paymentService.initSessionPayment(userId, email, data);
+}
+
+export async function manualInitBooking(
+  userId: string,
+  data: {
+    teacherId: string;
+    subject: string;
+    chapter?: string;
+    series?: string;
+    topics: string;
+    requestedSchedule: string;
+    durationHours: number;
+    paymentMethod: string;
+    phoneNumber: string;
+    screenshot?: string;
+  }
+) {
+  await connectToDB();
+
+  const teacher = await UserModel.findById(data.teacherId).select("role name").lean();
+  if (!teacher || (teacher as any).role !== "teacher") {
+    throw { status: 400, message: "নির্বাচিত শিক্ষক পাওয়া যায়নি" };
+  }
+
+  const schedule = new Date(data.requestedSchedule);
+  if (isNaN(schedule.getTime()) || schedule.getTime() <= Date.now()) {
+    throw { status: 400, message: "সময়সূচী সঠিক নয় — ভবিষ্যতের একটি সময় দিন" };
+  }
+
+  const amount = paymentService.SESSION_PRICE_PER_HOUR * data.durationHours;
+
+  const session = await OneToOneSessionModel.create({
+    student: userId,
+    teacher: data.teacherId,
+    subject: data.subject,
+    chapter: data.chapter || "",
+    series: data.series || "",
+    topics: data.topics,
+    requestedSchedule: schedule,
+    durationHours: data.durationHours,
+    pricePerHour: paymentService.SESSION_PRICE_PER_HOUR,
+    amount,
+    status: "awaiting_teacher",
+    transactionId: `MANUAL-SESSION-${Date.now()}`,
+    paymentMethod: data.paymentMethod,
+    phoneNumber: data.phoneNumber,
+    screenshot: data.screenshot,
+    paymentStatus: "pending",
+  });
+
+  return {
+    _id: session._id,
+    amount,
+    message: "সেশন বুকিং সাবমিট হয়েছে! অ্যাডমিন পেমেন্ট ভেরিফাই করে সেশনটি অ্যাক্টিভেট করবে।",
+  };
 }
 
 export async function listMine(userId: string, role: string) {

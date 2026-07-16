@@ -67,4 +67,5 @@ export const createLiveClassSchema = z.object({
 
 export const questionSchema = z.object({
   question: z.string().min(1, "প্রশ্ন লিখুন"),
+  images: z.array(z.string()).optional().default([]),
 });

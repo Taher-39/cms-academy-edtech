@@ -362,6 +362,14 @@ function LectureManageContent() {
           ))
         )}
       </div>
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        title="লেকচার ডিলিট করুন"
+        message="আপনি কি নিশ্চিত এই লেকচারটি মুছে ফেলতে চান? এই ক্রিয়াটি পূর্বাবস্থায় ফেরানো যাবে না।"
+        onConfirm={handleDeleteLecture}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

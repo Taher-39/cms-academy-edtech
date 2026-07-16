@@ -13,7 +13,8 @@ export async function answerQuestion(req: Request, res: Response) {
     const result = await qnaService.answerQuestion(
       req.params.qnaId,
       req.user!.userId,
-      parsed.data.reply
+      parsed.data.reply,
+      parsed.data.images
     );
     return res.status(200).json(result);
   } catch (error: any) {

@@ -6,6 +6,7 @@ const AnswerSchema = new Schema(
   {
     teacher: { type: Schema.Types.ObjectId, ref: "User", required: true },
     reply: { type: String, required: true },
+    images: [{ type: String, required: false }],
     date: { type: Date, required: true, default: () => new Date() },
   },
   { _id: false }
@@ -16,6 +17,7 @@ const QnASchema = new Schema(
     course: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     student: { type: Schema.Types.ObjectId, ref: "User", required: true },
     question: { type: String, required: true },
+    images: [{ type: String, required: false }],
     answers: { type: [AnswerSchema], required: true, default: [] },
   },
   { timestamps: true }

@@ -19,6 +19,8 @@ const OneToOneSessionSchema = new Schema(
     student: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     teacher: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     subject: { type: String, required: true, trim: true },
+    chapter: { type: String, required: false, trim: true },
+    series: { type: String, required: false, trim: true },
     topics: { type: String, required: true, trim: true },
     requestedSchedule: { type: Date, required: true },
     durationHours: { type: Number, required: true, min: 1, max: 4, default: 1 },
@@ -31,6 +33,13 @@ const OneToOneSessionSchema = new Schema(
     valId: { type: String, required: false },
     bankTransactionId: { type: String, required: false },
     respondedAt: { type: Date, required: false },
+    // Manual payment fields
+    paymentMethod: { type: String, enum: ["sslcommerz", "bKash", "Nagad", "Rocket"], required: false },
+    phoneNumber: { type: String, required: false },
+    screenshot: { type: String, required: false },
+    paymentStatus: { type: String, enum: ["paid", "pending", "refunded"], required: false },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User", required: false },
+    reviewedAt: { type: Date, required: false },
   },
   { timestamps: true }
 );

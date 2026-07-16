@@ -234,7 +234,8 @@ export async function askQuestion(req: Request, res: Response) {
     const result = await courseService.askQuestion(
       req.params.courseId,
       req.user!.userId,
-      parsed.data.question
+      parsed.data.question,
+      parsed.data.images
     );
     return res.status(201).json(result);
   } catch (error: any) {

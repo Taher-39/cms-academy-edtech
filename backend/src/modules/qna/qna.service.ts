@@ -1,7 +1,7 @@
 import { connectToDB } from "../../shared/lib/db";
 import { QnAModel } from "../../shared/models/QnA";
 
-export async function answerQuestion(qnaId: string, teacherId: string, reply: string) {
+export async function answerQuestion(qnaId: string, teacherId: string, reply: string, images?: string[]) {
   await connectToDB();
 
   const qna = await QnAModel.findById(qnaId);
@@ -12,6 +12,7 @@ export async function answerQuestion(qnaId: string, teacherId: string, reply: st
   qna.answers.push({
     teacher: teacherId as any,
     reply,
+    images: images || [],
     date: new Date(),
   });
 
