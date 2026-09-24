@@ -61,6 +61,10 @@ const CourseSchema = new Schema(
     enrolledStudents: [{ type: Schema.Types.ObjectId, ref: "User" }],
     status: { type: String, enum: courseStatuses, required: true, default: "approved" },
     isFeatured: { type: Boolean, required: true, default: false },
+    // Denormalized from the Review collection so catalog listings can sort/filter
+    // on rating without an aggregation per card.
+    ratingAverage: { type: Number, required: true, default: 0, min: 0, max: 5 },
+    ratingCount: { type: Number, required: true, default: 0, min: 0 },
   },
   { timestamps: true }
 );

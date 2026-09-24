@@ -20,6 +20,9 @@ import assistantRoutes from "./modules/assistant/assistant.routes";
 import manualPaymentRoutes from "./modules/manual-payment/manual-payment.routes";
 import quizRoutes from "./modules/quiz/quiz.routes";
 import sessionRoutes from "./modules/session/session.routes";
+import reviewRoutes from "./modules/review/review.routes";
+import notificationRoutes from "./modules/notification/notification.routes";
+import certificateRoutes from "./modules/certificate/certificate.routes";
 
 function frontendOrigins(): string[] {
   return (process.env.FRONTEND_URL || "http://localhost:3000")
@@ -53,6 +56,9 @@ app.use("/api/assistant", assistantRoutes);
 app.use("/api/payment/manual", manualPaymentRoutes);
 app.use("/api/quiz", quizRoutes);
 app.use("/api/sessions", sessionRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/certificates", certificateRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {

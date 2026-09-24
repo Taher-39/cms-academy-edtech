@@ -17,10 +17,12 @@ function CoursesContent() {
   const type = searchParams.get("type") || "";
   const free = searchParams.get("free") || "";
   const search = searchParams.get("search") || "";
+  const sort = searchParams.get("sort") || "";
+  const minRating = searchParams.get("minRating") || "";
 
   useEffect(() => {
     fetchCourses();
-  }, [category, classLevel, type, free, search]);
+  }, [category, classLevel, type, free, search, sort, minRating]);
 
   const fetchCourses = async () => {
     setLoading(true);
@@ -30,6 +32,8 @@ function CoursesContent() {
     if (type) url.searchParams.set("type", type);
     if (free) url.searchParams.set("free", free);
     if (search) url.searchParams.set("search", search);
+    if (sort) url.searchParams.set("sort", sort);
+    if (minRating) url.searchParams.set("minRating", minRating);
     try {
       const res = await fetch(url.toString(), { cache: "no-store" });
       if (res.ok) {
@@ -55,7 +59,7 @@ function CoursesContent() {
       </h1>
 
       {/* Filters — auto-apply on select, no button */}
-      <div className="mb-10 grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="mb-10 grid grid-cols-2 md:grid-cols-7 gap-4">
         <input
           defaultValue={search}
           onKeyDown={(e) => {
@@ -107,6 +111,28 @@ function CoursesContent() {
           <option value="">সব</option>
           <option value="true">ফ্রি</option>
           <option value="false">পেইড</option>
+        </select>
+
+        <select
+          value={minRating}
+          onChange={(e) => updateFilter("minRating", e.target.value)}
+          className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none cursor-pointer"
+        >
+          <option value="">সব রেটিং</option>
+          <option value="4">৪˚+ রেটিং</option>
+          <option value="3">৩˚+ রেটিং</option>
+        </select>
+
+        <select
+          value={sort}
+          onChange={(e) => updateFilter("sort", e.target.value)}
+          className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-500 outline-none cursor-pointer"
+        >
+          <option value="">সর্বশেষ</option>
+          <option value="rating">সর্বাধিক রেটিং</option>
+          <option value="popular">জনপ্রিয়</option>
+          <option value="price-low">দাম: কম → বেশি</option>
+          <option value="price-high">দাম: বেশি → কম</option>
         </select>
       </div>
 

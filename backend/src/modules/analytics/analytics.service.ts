@@ -2,6 +2,8 @@ import { connectToDB } from "../../shared/lib/db";
 import { EnrollmentModel } from "../../shared/models/Enrollment";
 import { CourseModel } from "../../shared/models/Course";
 import { UserModel } from "../../shared/models/User";
+import { CertificateModel } from "../../shared/models/Certificate";
+import { ReviewModel } from "../../shared/models/Review";
 
 export async function getSummary() {
   await connectToDB();
@@ -13,6 +15,8 @@ export async function getSummary() {
     totalTeachers,
     totalCourses,
     totalEnrollments,
+    certificatesIssued,
+    ratingAgg,
   ] = await Promise.all([
     EnrollmentModel.aggregate([
       { $match: { paymentStatus: "paid" } },
@@ -23,6 +27,11 @@ export async function getSummary() {
     UserModel.countDocuments({ role: "teacher" }),
     CourseModel.countDocuments({}),
     EnrollmentModel.countDocuments({}),
+    CertificateModel.countDocuments({ revokedAt: null }),
+    ReviewModel.aggregate([
+      { $match: { isHidden: false } },
+      { $group: { _id: null, avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+    ]),
   ]);
 
   return {
@@ -32,6 +41,9 @@ export async function getSummary() {
     totalTeachers,
     totalCourses,
     totalEnrollments,
+    certificatesIssued,
+    averageRating: Math.round((ratingAgg[0]?.avg || 0) * 10) / 10,
+    totalReviews: ratingAgg[0]?.count || 0,
   };
 }
 

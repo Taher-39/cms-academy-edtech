@@ -5,6 +5,7 @@ import { UserModel } from "../../shared/models/User";
 import { OneToOneSessionModel } from "../../shared/models/OneToOneSession";
 import { sslcommerz, getSslcommerzInitData } from "../../shared/config/sslcommerz";
 import { validateAndComputeCouponDiscount, incrementCouponUsage } from "../coupon/coupon.service";
+import { notify } from "../notification/notification.service";
 
 export const SESSION_PRICE_PER_HOUR = 200;
 
@@ -166,11 +167,22 @@ export async function initSessionPayment(
 
 type TrxData = NonNullable<ReturnType<typeof global.__trxStore.get>>;
 
+async function notifyEnrolled(userId: string, courseId: string) {
+  const course = await CourseModel.findById(courseId).select("title").lean();
+  await notify({
+    user: userId,
+    type: "enrollment",
+    title: "এনরোলমেন্ট সফল",
+    message: `"${(course as { title?: string } | null)?.title || "কোর্স"}" কোর্সে আপনার এনরোলমেন্ট সম্পন্ন হয়েছে`,
+    link: `/courses/${courseId}/learn`,
+  });
+}
+
 async function createSessionFromTrxData(trxData: TrxData, valId?: string, bankTranId?: string) {
   const existing = await OneToOneSessionModel.findOne({ transactionId: trxData.tran_id });
   if (existing) return existing;
 
-  return OneToOneSessionModel.create({
+  const session = await OneToOneSessionModel.create({
     student: trxData.userId,
     teacher: trxData.teacherId,
     subject: trxData.subject,
@@ -188,6 +200,16 @@ async function createSessionFromTrxData(trxData: TrxData, valId?: string, bankTr
     paymentMethod: "sslcommerz",
     paymentStatus: "paid",
   });
+
+  await notify({
+    user: String(trxData.teacherId),
+    type: "session",
+    title: "নতুন সেশন অনুরোধ",
+    message: `${trxData.subject} বিষয়ে একটি ওয়ান-টু-ওয়ান সেশনের অনুরোধ এসেছে — গ্রহণ বা প্রত্যাখ্যান করুন`,
+    link: "/dashboard/sessions",
+  });
+
+  return session;
 }
 
 export async function handleIpn(body: any) {
@@ -241,6 +263,8 @@ export async function handleIpn(body: any) {
     if (trxData.couponCode) {
       await incrementCouponUsage(trxData.couponCode);
     }
+
+    await notifyEnrolled(trxData.userId, trxData.courseId!);
   }
 
   global.__trxStore?.delete(trxKey);
@@ -316,6 +340,8 @@ export async function handlePaymentSuccess(query: any) {
       if (trxData?.couponCode) {
         await incrementCouponUsage(trxData.couponCode);
       }
+
+      await notifyEnrolled(userId, targetCourseId);
     }
 
     global.__trxStore?.delete(trxKey);

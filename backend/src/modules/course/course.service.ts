@@ -6,6 +6,7 @@ import { QnAModel } from "../../shared/models/QnA";
 import { EnrollmentModel } from "../../shared/models/Enrollment";
 import { UserModel } from "../../shared/models/User";
 import cloudinary from "../../shared/config/cloudinary";
+import { notify, notifyMany } from "../notification/notification.service";
 
 async function assertIsTeacher(teacherId: string) {
   const teacher = await UserModel.findById(teacherId).select("role");
@@ -25,9 +26,19 @@ interface ListCoursesParams {
   status?: string;
   featured?: string;
   mine?: string;
+  sort?: string;
+  minRating?: string;
   page: number;
   limit: number;
 }
+
+const SORT_OPTIONS: Record<string, Record<string, 1 | -1>> = {
+  newest: { createdAt: -1 },
+  rating: { ratingAverage: -1, ratingCount: -1 },
+  popular: { ratingCount: -1, createdAt: -1 },
+  "price-low": { price: 1 },
+  "price-high": { price: -1 },
+};
 
 interface Requester {
   userId: string;
@@ -45,6 +56,10 @@ export async function listCourses(params: ListCoursesParams, requester?: Request
   if (params.free === "false") filter.price = { $gt: 0 };
   if (params.search) filter.title = { $regex: params.search, $options: "i" };
   if (params.featured === "true") filter.isFeatured = true;
+  if (params.minRating) {
+    const min = Number(params.minRating);
+    if (!Number.isNaN(min) && min > 0) filter.ratingAverage = { $gte: min };
+  }
 
   const isAdmin = requester?.role === "admin" || requester?.role === "superAdmin";
 
@@ -63,7 +78,7 @@ export async function listCourses(params: ListCoursesParams, requester?: Request
   const [courses, total] = await Promise.all([
     CourseModel.find(filter)
       .populate("teacher", "name email")
-      .sort({ createdAt: -1 })
+      .sort(SORT_OPTIONS[params.sort || "newest"] || SORT_OPTIONS.newest)
       .skip(skip)
       .limit(params.limit)
       .lean(),
@@ -178,6 +193,19 @@ export async function updateCourse(courseId: string, body: any) {
     new: true,
     runValidators: true,
   });
+
+  if (body.status && body.status !== course.status) {
+    await notify({
+      user: String(course.teacher),
+      type: "course",
+      title: body.status === "approved" ? "কোর্স অনুমোদিত" : "কোর্স স্ট্যাটাস পরিবর্তিত",
+      message:
+        body.status === "approved"
+          ? `"${course.title}" কোর্সটি প্রকাশিত হয়েছে`
+          : `"${course.title}" কোর্সটি ${body.status === "rejected" ? "প্রত্যাখ্যান করা হয়েছে" : "পেন্ডিং করা হয়েছে"}`,
+      link: `/courses/${courseId}`,
+    });
+  }
 
   return { message: "কোর্স আপডেট সফল", course: updated };
 }
@@ -365,6 +393,23 @@ export async function createLiveClass(courseId: string, data: any, userId: strin
     meetLink: data.meetLink,
   });
 
+  const activeEnrollments = await EnrollmentModel.find({
+    course: courseId,
+    expiryAt: { $gt: new Date() },
+  })
+    .select("student")
+    .lean();
+
+  await notifyMany(
+    activeEnrollments.map((e: { student: unknown }) => String(e.student)),
+    {
+      type: "live",
+      title: "নতুন লাইভ ক্লাস",
+      message: `"${course.title}" কোর্সে লাইভ ক্লাস: ${data.title} — ${new Date(data.dateTime).toLocaleString("bn-BD")}`,
+      link: `/courses/${courseId}/learn`,
+    }
+  );
+
   return { message: "লাইভ ক্লাস তৈরি করা হয়েছে", liveClass };
 }
 
@@ -411,6 +456,18 @@ export async function askQuestion(courseId: string, userId: string, question: st
     question,
     images: images || [],
   });
+
+  const course = await CourseModel.findById(courseId).select("title teacher").lean();
+  const courseDoc = course as { title?: string; teacher?: unknown } | null;
+  if (courseDoc?.teacher) {
+    await notify({
+      user: String(courseDoc.teacher),
+      type: "qna",
+      title: "নতুন প্রশ্ন",
+      message: `"${courseDoc.title}" কোর্সে একজন শিক্ষার্থী প্রশ্ন করেছেন`,
+      link: "/dashboard/qna",
+    });
+  }
 
   return { message: "প্রশ্ন জমা দেওয়া হয়েছে", qna };
 }

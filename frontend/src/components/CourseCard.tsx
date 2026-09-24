@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StarRating from "./StarRating";
 
 interface CourseCardProps {
   course: {
@@ -16,6 +17,8 @@ interface CourseCardProps {
     teacher?: { name: string; email?: string };
     isLive?: boolean;
     enrolledStudents?: string[];
+    ratingAverage?: number;
+    ratingCount?: number;
   };
 }
 
@@ -81,6 +84,16 @@ export default function CourseCard({ course }: CourseCardProps) {
           <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-4">
             {course.description}
           </p>
+
+          {!!course.ratingCount && course.ratingCount > 0 && (
+            <div className="flex items-center gap-1.5 mb-3 text-xs text-zinc-500">
+              <StarRating rating={course.ratingAverage || 0} />
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                {(course.ratingAverage || 0).toFixed(1)}
+              </span>
+              <span>({course.ratingCount.toLocaleString("bn-BD")})</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <span className="text-sm text-zinc-500 dark:text-zinc-400">

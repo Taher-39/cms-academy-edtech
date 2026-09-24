@@ -66,6 +66,7 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
   const [tab, setTab] = useState<"video" | "qna" | "quiz">("video");
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [marking, setMarking] = useState(false);
+  const [certificateId, setCertificateId] = useState<string | null>(null);
   const [openChapters, setOpenChapters] = useState<Set<string>>(() => {
     const initialGroups = groupLecturesByChapter(initialLectures);
     const initialHasChapters =
@@ -149,11 +150,15 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
     if (!active || !isEnrolled) return;
     setMarking(true);
     try {
-      await api.post(`/api/enrollments/${course._id}/progress`, {
+      const res = await api.post(`/api/enrollments/${course._id}/progress`, {
         lectureId: active._id,
       });
       setWatched((prev) => new Set(prev).add(active._id));
       addToast(successMsg, "success");
+      if (res.data?.certificate?.certificateId) {
+        setCertificateId(res.data.certificate.certificateId);
+        addToast("অভিনন্দন! কোর্স সম্পন্ন — সার্টিফিকেট প্রস্তুত 🎉", "success");
+      }
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
@@ -209,6 +214,38 @@ export default function LearnClient({ course, lectures: initialLectures }: Props
           </span>
         )}
       </div>
+
+      {isEnrolled && lectures.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-xs text-zinc-500 mb-1.5">
+            <span>
+              অগ্রগতি: {watched.size}/{lectures.length} লেকচার
+            </span>
+            <span>{Math.round((watched.size / lectures.length) * 100)}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 transition-all"
+              style={{ width: `${Math.min(100, (watched.size / lectures.length) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {certificateId && (
+        <div className="mb-6 p-4 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            🏅 কোর্স সম্পন্ন! আপনার সার্টিফিকেট আইডি{" "}
+            <span className="font-mono">{certificateId}</span>
+          </p>
+          <Link
+            href="/dashboard/certificates"
+            className="text-sm px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium transition"
+          >
+            সার্টিফিকেট দেখুন
+          </Link>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-4 gap-6">
         {/* Sidebar: chapters */}

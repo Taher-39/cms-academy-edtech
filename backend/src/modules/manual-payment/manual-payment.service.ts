@@ -3,6 +3,7 @@ import { ManualPaymentModel } from "../../shared/models/ManualPayment";
 import { CourseModel } from "../../shared/models/Course";
 import { EnrollmentModel } from "../../shared/models/Enrollment";
 import { UserModel } from "../../shared/models/User";
+import { notify, notifyAdmins } from "../notification/notification.service";
 
 interface SubmitManualPaymentInput {
   userId: string;
@@ -59,6 +60,13 @@ export async function submitManualPayment(input: SubmitManualPaymentInput) {
     paymentMethod,
     amount,
     screenshot: screenshot || undefined,
+  });
+
+  await notifyAdmins({
+    type: "payment",
+    title: "নতুন ম্যানুয়াল পেমেন্ট",
+    message: `"${(course as any).title}" কোর্সে একটি ম্যানুয়াল পেমেন্ট ভেরিফিকেশনের অপেক্ষায় (৳${amount})`,
+    link: "/dashboard/payments/manual",
   });
 
   return { _id: payment._id, amount, message: "পেমেন্ট সাবমিট হয়েছে, অ্যাডমিন ভেরিফাই করবে" };
@@ -142,6 +150,20 @@ export async function reviewManualPayment(
   payment.reviewedBy = reviewerId as any;
   payment.reviewedAt = new Date();
   await payment.save();
+
+  const reviewedCourse = await CourseModel.findById(payment.course).select("title").lean();
+  const courseTitle = (reviewedCourse as { title?: string } | null)?.title || "কোর্স";
+
+  await notify({
+    user: String(payment.student),
+    type: "payment",
+    title: review.status === "approved" ? "পেমেন্ট অনুমোদিত" : "পেমেন্ট বাতিল",
+    message:
+      review.status === "approved"
+        ? `"${courseTitle}" কোর্সে আপনার এনরোলমেন্ট সক্রিয় হয়েছে`
+        : `"${courseTitle}" কোর্সের পেমেন্ট অনুমোদিত হয়নি${review.adminNotes ? ` — ${review.adminNotes}` : ""}`,
+    link: review.status === "approved" ? `/courses/${payment.course}/learn` : "/dashboard",
+  });
 
   return {
     _id: payment._id,
