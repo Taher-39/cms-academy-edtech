@@ -26,6 +26,8 @@ declare global {
       // one-to-one session bookings
       teacherId?: string;
       subject?: string;
+      chapter?: string;
+      series?: string;
       topics?: string;
       requestedSchedule?: string;
       durationHours?: number;

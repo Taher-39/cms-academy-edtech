@@ -3,6 +3,7 @@ import { CourseModel } from "../../shared/models/Course";
 import { UserModel } from "../../shared/models/User";
 import { OneToOneSessionModel } from "../../shared/models/OneToOneSession";
 import * as paymentService from "../payment/payment.service";
+import { notify, notifyAdmins } from "../notification/notification.service";
 
 export async function listTeachers() {
   await connectToDB();
@@ -102,6 +103,13 @@ export async function manualInitBooking(
     paymentStatus: "pending",
   });
 
+  await notifyAdmins({
+    type: "payment",
+    title: "নতুন ম্যানুয়াল সেশন পেমেন্ট",
+    message: `${data.subject} বিষয়ে একটি ওয়ান-টু-ওয়ান সেশনের পেমেন্ট ভেরিফিকেশন অপেক্ষমাণ (৳${amount})`,
+    link: "/dashboard/payments/manual",
+  });
+
   return {
     _id: session._id,
     amount,
@@ -143,6 +151,14 @@ export async function acceptSession(sessionId: string, teacherId: string, meetLi
   session.respondedAt = new Date();
   await session.save();
 
+  await notify({
+    user: String(session.student),
+    type: "session",
+    title: "সেশন গৃহীত হয়েছে",
+    message: `${session.subject} বিষয়ের সেশনটি শিক্ষক গ্রহণ করেছেন — মিট লিংক ড্যাশবোর্ডে দেখুন`,
+    link: "/dashboard/sessions",
+  });
+
   return { message: "সেশন গ্রহণ করা হয়েছে", session };
 }
 
@@ -164,6 +180,20 @@ export async function declineSession(sessionId: string, teacherId: string, note?
   session.teacherNote = note || "";
   session.respondedAt = new Date();
   await session.save();
+
+  await notify({
+    user: String(session.student),
+    type: "session",
+    title: "সেশন প্রত্যাখ্যাত",
+    message: `${session.subject} বিষয়ের সেশনটি শিক্ষক নিতে পারেননি — এডমিন রিফান্ড প্রসেস করবেন`,
+    link: "/dashboard/sessions",
+  });
+  await notifyAdmins({
+    type: "session",
+    title: "সেশন প্রত্যাখ্যাত — রিফান্ড প্রয়োজন",
+    message: `${session.subject} বিষয়ের একটি সেশন শিক্ষক প্রত্যাখ্যান করেছেন (৳${session.amount})`,
+    link: "/dashboard/sessions",
+  });
 
   return { message: "সেশন প্রত্যাখ্যান করা হয়েছে — এডমিন রিফান্ড প্রসেস করবেন", session };
 }

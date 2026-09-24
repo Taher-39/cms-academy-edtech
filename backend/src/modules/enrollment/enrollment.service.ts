@@ -4,6 +4,8 @@ import { CourseModel } from "../../shared/models/Course";
 import { UserModel } from "../../shared/models/User";
 import { LectureModel } from "../../shared/models/Lecture";
 import { sslcommerz } from "../../shared/config/sslcommerz";
+import { notify } from "../notification/notification.service";
+import { issueIfCompleted } from "../certificate/certificate.service";
 
 export async function enrollStudent(userId: string, courseId: string) {
   await connectToDB();
@@ -52,6 +54,14 @@ export async function enrollStudent(userId: string, courseId: string) {
 
   await UserModel.findByIdAndUpdate(userId, {
     $addToSet: { enrolledCourses: courseId },
+  });
+
+  await notify({
+    user: userId,
+    type: "enrollment",
+    title: "এনরোলমেন্ট সফল",
+    message: `"${course.title}" কোর্সে আপনার এনরোলমেন্ট সম্পন্ন হয়েছে`,
+    link: `/courses/${courseId}/learn`,
   });
 
   return { message: "এনরোলমেন্ট সফল", enrollment };
@@ -124,7 +134,14 @@ export async function markLectureWatched(userId: string, courseId: string, lectu
   const watched = ((updated as any)?.watchedLectures || []).length;
   const percent = total > 0 ? Math.round((Math.min(watched, total) / total) * 100) : 0;
 
-  return { message: "লেকচার সম্পন্ন হিসেবে চিহ্নিত হয়েছে", progress: { watched, total, percent } };
+  // Finishing the last lecture mints the completion certificate right away.
+  const certificate = percent === 100 ? await issueIfCompleted(userId, courseId) : null;
+
+  return {
+    message: "লেকচার সম্পন্ন হিসেবে চিহ্নিত হয়েছে",
+    progress: { watched, total, percent },
+    certificate,
+  };
 }
 
 // ============ Admin ============
@@ -281,6 +298,15 @@ export async function refundEnrollment(enrollmentId: string, remarks: string) {
   if (refundRefId) enrollment.refundRefId = refundRefId;
   enrollment.expiryAt = new Date();
   await enrollment.save();
+
+  const refundedCourse = await CourseModel.findById(enrollment.course).select("title").lean();
+  await notify({
+    user: String(enrollment.student),
+    type: "payment",
+    title: "রিফান্ড সম্পন্ন",
+    message: `"${(refundedCourse as { title?: string } | null)?.title || "কোর্স"}" কোর্সের ৳${enrollment.paidAmount} রিফান্ড করা হয়েছে`,
+    link: "/dashboard",
+  });
 
   return { message: "রিফান্ড সম্পন্ন হয়েছে", enrollment };
 }

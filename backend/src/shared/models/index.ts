@@ -11,3 +11,6 @@ export * from "./QuizQuestion";
 export * from "./QuizAttempt";
 export * from "./OneToOneSession";
 export * from "./ManualPayment";
+export * from "./Review";
+export * from "./Notification";
+export * from "./Certificate";

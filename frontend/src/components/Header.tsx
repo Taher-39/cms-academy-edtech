@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
+import NotificationBell from "./NotificationBell";
 import { useAuthStore } from "@/src/lib/store";
 import { useState } from "react";
 
@@ -100,6 +101,7 @@ export default function Header() {
 
           <div className="flex items-center gap-2 shrink-0 ml-auto md:ml-0">
             <ThemeToggle />
+            <NotificationBell />
             {user ? (
               <div className="hidden md:flex items-center gap-3">
                 <span className="text-sm text-zinc-600 dark:text-zinc-400">{user.name}</span>

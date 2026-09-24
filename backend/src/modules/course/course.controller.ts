@@ -21,6 +21,8 @@ export async function listCourses(req: Request, res: Response) {
         status: req.query.status as string,
         featured: req.query.featured as string,
         mine: req.query.mine as string,
+        sort: req.query.sort as string,
+        minRating: req.query.minRating as string,
         page: parseInt((req.query.page as string) || "1"),
         limit: parseInt((req.query.limit as string) || "12"),
       },

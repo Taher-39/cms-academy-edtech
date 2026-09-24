@@ -47,6 +47,8 @@ export default function DashboardLayout({
   const links = [
     { href: "/dashboard", label: "🏠 ড্যাশবোর্ড", roles: ["student", "teacher", "admin", "superAdmin"] },
     { href: "/dashboard/my-courses", label: "🎓 আমার কোর্স", roles: ["student"] },
+    { href: "/dashboard/notifications", label: "🔔 নোটিফিকেশন", roles: ["student", "teacher", "admin", "superAdmin"] },
+    { href: "/dashboard/certificates", label: "🏅 সার্টিফিকেট", roles: ["student", "admin", "superAdmin"] },
     { href: "/dashboard/sessions", label: "🧑‍🏫 ওয়ান-টু-ওয়ান সেশন", roles: ["student", "teacher", "admin", "superAdmin"] },
     { href: "/dashboard/profile", label: "⚙️ প্রোফাইল", roles: ["student", "teacher", "admin", "superAdmin"] },
     { href: "/dashboard/courses/manage", label: "📚 কোর্স ম্যানেজ", roles: ["teacher", "admin", "superAdmin"] },
@@ -58,6 +60,7 @@ export default function DashboardLayout({
     { href: "/dashboard/payments", label: user.role === "student" ? "💳 পেমেন্ট" : "💳 লেনদেন", roles: ["student", "admin", "superAdmin"] },
     { href: "/dashboard/payments/manual", label: "💰 ম্যানুয়াল পেমেন্ট", roles: ["admin", "superAdmin"] },
     { href: "/dashboard/analytics", label: "📊 অ্যানালিটিক্স", roles: ["admin", "superAdmin"] },
+    { href: "/dashboard/reviews", label: "⭐ রিভিউ মডারেশন", roles: ["admin", "superAdmin"] },
     { href: "/dashboard/coupons", label: "🎟️ কুপন", roles: ["admin", "superAdmin"] },
     { href: "/dashboard/categories", label: "📁 বিষয়/ক্যাটাগরি", roles: ["admin", "superAdmin"] },
     { href: "/dashboard/admin-access", label: "🔑 এডমিন অ্যাক্সেস", roles: ["superAdmin"] },

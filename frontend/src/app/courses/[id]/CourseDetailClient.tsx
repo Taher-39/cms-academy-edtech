@@ -9,6 +9,8 @@ import { useToast } from "@/src/components/Toast";
 import YouTubeEmbed from "@/src/components/YouTubeEmbed";
 import QnAThread from "@/src/components/QnAThread";
 import FaqAccordion from "@/src/components/FaqAccordion";
+import StarRating from "@/src/components/StarRating";
+import CourseReviews from "@/src/components/CourseReviews";
 import { loginUrlWithRedirect } from "@/src/lib/authRedirect";
 
 interface ClassScheduleItem {
@@ -55,6 +57,8 @@ interface CourseData {
   faqs?: FaqItem[];
   testimonials?: TestimonialItem[];
   enrolledStudents?: string[];
+  ratingAverage?: number;
+  ratingCount?: number;
 }
 
 interface LectureData {
@@ -111,25 +115,6 @@ const dayLabels: Record<string, string> = {
   friday: "শুক্রবার",
   saturday: "শনিবার",
 };
-
-function StarRating({ rating }: { rating: number }) {
-  const rounded = Math.round(rating);
-  return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${rating} স্টার`}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <svg
-          key={i}
-          viewBox="0 0 20 20"
-          className={`w-3.5 h-3.5 ${
-            i <= rounded ? "fill-amber-400" : "fill-zinc-300 dark:fill-zinc-700"
-          }`}
-        >
-          <path d="M10 1.5l2.6 5.27 5.82.85-4.21 4.1.99 5.79L10 14.9l-5.2 2.61.99-5.79-4.21-4.1 5.82-.85z" />
-        </svg>
-      ))}
-    </span>
-  );
-}
 
 function LectureItem({
   lecture,
@@ -345,10 +330,12 @@ export default function CourseDetailClient({
       : "চ্যাপ্টার";
 
   const testimonials = course.testimonials || [];
-  const avgRating =
-    testimonials.length > 0
-      ? testimonials.reduce((sum, t) => sum + (t.rating || 5), 0) / testimonials.length
-      : null;
+  // Real student reviews win over the hand-written testimonials on the course.
+  const avgRating = course.ratingCount
+    ? course.ratingAverage || 0
+    : testimonials.length > 0
+    ? testimonials.reduce((sum, t) => sum + (t.rating || 5), 0) / testimonials.length
+    : null;
   const enrolledCount = course.enrolledStudents?.length || 0;
   const whatYouWillLearn = course.whatYouWillLearn || [];
   const features = course.features || [];
@@ -425,6 +412,11 @@ export default function CourseDetailClient({
                   <span className="font-medium text-zinc-700 dark:text-zinc-300">
                     {avgRating.toFixed(1)}
                   </span>
+                  {!!course.ratingCount && (
+                    <span className="text-zinc-500">
+                      ({course.ratingCount.toLocaleString("bn-BD")} রিভিউ)
+                    </span>
+                  )}
                 </span>
               )}
               <span>👥 {enrolledCount.toLocaleString("bn-BD")} জন শিক্ষার্থী</span>
@@ -705,6 +697,9 @@ export default function CourseDetailClient({
               </div>
             </div>
           )}
+
+          {/* Student reviews */}
+          <CourseReviews courseId={course._id} />
 
           {/* FAQ */}
           {faqs.length > 0 && (
